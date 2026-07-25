@@ -23,11 +23,18 @@ Uso principal: **el móvil**, añadido a la pantalla de inicio.
 | Interfaz | completa y verificada en navegador |
 | Worker | completo, 28 pruebas contra GitHub y TMDB simulados |
 | Navegador | 32 pruebas de saneado, claves, copias locales y perfil |
-| Despliegue | **pendiente**: faltan las constantes reales y desplegar |
-| E2E real | **pendiente**: nunca ha tocado un GitHub ni un TMDB de verdad |
+| Despliegue | **hecho**: Worker en Cloudflare, app en Pages, dos repos en la cuenta AlexAmMo |
+| E2E real | **hecho** el 25 de julio de 2026 contra GitHub, Cloudflare y TMDB de verdad |
 
-Siguiente paso concreto: seguir `PUESTA-EN-MARCHA.md` de principio a fin. Va paso a paso, cada tramo
-termina con una comprobación, y acaba con el recorrido E2E.
+En producción:
+
+- app: `https://alexammo.github.io/sofa-club/` (repo público `AlexAmMo/sofa-club`)
+- Worker: `https://sofa-club.mysofaclub.workers.dev`
+- datos: repo privado `AlexAmMo/sofa-club-data`
+- el remoto de git usa el alias SSH `github-sofaclub` (clave `~/.ssh/id_sofaclub`)
+
+Siguiente paso concreto: crear el club de verdad con `ADMIN_KEY` y repartir invitaciones.
+`PUESTA-EN-MARCHA.md` tiene el paso a paso por si hay que rehacerlo desde cero.
 
 ---
 
@@ -269,6 +276,9 @@ simulaciones en memoria.
 - Un byte de control (NUL) dentro del script hace que el hash de la CSP nunca cuadre: el parser de
   HTML lo convierte en `U+FFFD`. Ya pasó una vez. `build-csp.js` no lo detecta.
 - `caches` no existe en Node: las pruebas del Worker lo simulan.
+- **Pages cachea el HTML unos diez minutos.** Tras subir un cambio, el navegador sigue sirviendo el
+  anterior un rato: para comprobarlo al momento hay que forzar recarga o añadir `?v=algo`. Pasó
+  durante el E2E y parecía que el arreglo no funcionaba.
 - La cabecera va justa de ancho a 390 px. Por eso el recuento de personas desaparece del estado de
   sincronización cuando hay chip de club (`syncLabel(corto)`), y por eso `.hsync span` lleva
   `nowrap` + elipsis: si se parte en dos líneas, descoloca toda la cabecera.
