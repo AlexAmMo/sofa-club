@@ -140,7 +140,8 @@ const fn = (nombre) => {
   return js.slice(i, js.indexOf('\n}', i) + 2);
 };
 const N = {};
-vm.runInContext(fn('absEp') + fn('epTxt') + '\nthis.absEp = absEp; this.epTxt = epTxt;', vm.createContext(N));
+vm.runInContext(fn('absEp') + fn('epTxt') + fn('recortarPila')
+  + '\nthis.absEp = absEp; this.epTxt = epTxt; this.recortarPila = recortarPila;', vm.createContext(N));
 
 /* One Piece según TMDB: temporadas largas y el reproductor contando en absoluto */
 const op = { seasons: [{ number:1, episodes:61 }, { number:2, episodes:16 }, { number:3, episodes:53 }] };
@@ -156,6 +157,26 @@ ok('pero no lo repite si sería el mismo número',
 ok('el separador se puede cambiar sin tocar el resto',
   N.epTxt(op, { s:3, e:5 }, ' · E') === 'T3 · E5 · nº 82', N.epTxt(op, { s:3, e:5 }, ' · E'));
 ok('sin progreso empieza por el principio', N.epTxt(op, null) === 'T1 E0');
+
+/* ── 7. la pila de hojas y el botón atrás ── */
+console.log('\n  — navegación entre hojas —');
+const detalle = { kind:'detail' }, confirmar = { kind:'confirm' }, ajustes = { kind:'settings' };
+
+let p = N.recortarPila(confirmar, [detalle], 1);
+ok('volver desde una confirmación apilada devuelve al detalle, no al tablero',
+  p.sheet === detalle && p.pila.length === 0, JSON.stringify(p));
+
+p = N.recortarPila(confirmar, [detalle], 0);
+ok('y desde ahí, otro paso atrás cierra del todo', p.sheet === null && p.pila.length === 0);
+
+p = N.recortarPila(confirmar, [ajustes, detalle], 0);
+ok('un solo paso puede desmontar la pila entera', p.sheet === null && p.pila.length === 0);
+
+p = N.recortarPila(detalle, [], 1);
+ok('si el historial pide la profundidad que ya hay, no se toca nada', p.sheet === detalle);
+
+p = N.recortarPila(null, [], 0);
+ok('y sin nada abierto no se rompe', p.sheet === null && p.pila.length === 0);
 
 console.log('\n' + (fallos ? fallos + ' PRUEBA(S) FALLIDA(S)' : 'todas las pruebas del navegador pasan'));
 process.exit(fallos ? 1 : 0);

@@ -22,7 +22,7 @@ Uso principal: **el móvil**, añadido a la pantalla de inicio.
 |---|---|
 | Interfaz | completa, verificada en navegador y **en producción** |
 | Worker | completo, 44 pruebas contra GitHub y TMDB simulados |
-| Navegador | 40 pruebas de saneado, claves, copias locales, perfil y numeración |
+| Navegador | 45 pruebas de saneado, claves, copias locales, perfil, numeración y hojas |
 | Despliegue | **hecho**: Worker en Cloudflare, app en Pages, dos repos en la cuenta AlexAmMo |
 | E2E real | **hecho** el 25 de julio de 2026 contra GitHub, Cloudflare y TMDB de verdad |
 
@@ -187,6 +187,33 @@ mezcla personas entre los resultados, así que una temporada concreta de una fra
 menudo por debajo del puesto 20. Se pide la segunda página **sólo si la primera no llenó la lista**:
 la mayoría de búsquedas siguen siendo una única petición y la segunda se paga cuando hacía falta.
 
+**Por qué se pinta por zonas y no el documento entero.** Era `root.innerHTML = view()` en cada cambio
+de estado. Como los nodos salían nuevos, **las animaciones CSS se reproducían desde el principio**: la
+de entrada de las tarjetas arranca en `opacity:0`, así que cualquier repintado desvanecía el tablero
+entero y lo traía de vuelta. Eso, unido a que el repaso de cada minuto emitía siempre, es lo que se
+veía como un parpadeo constante. Ahora hay cinco zonas (`rhead`, `rmain`, `rnav`, `rfloat`, `rsheet`),
+cada una recuerda el HTML que pintó y sólo toca el DOM si ha cambiado. Los envoltorios llevan
+`display:contents`, o sea que **no generan caja** y para el diseño la estructura es la de siempre —
+importa, porque la cabecera es `position:sticky` y meterla en un `div` normal la dejaría pegada a un
+contenedor de su propia altura, que es como no pegarla a nada.
+
+**Por qué las tarjetas sólo se animan si son nuevas.** `data-anim="in"` lo llevaban todas siempre.
+Ahora se compara con las que había en el repintado anterior (`vistas`). Las animaciones deliberadas
+—`land`, `split`, `join`— siguen intactas: ésas las pide `flash()` a propósito.
+
+**Por qué los gestos no pasan por el estado.** Deslizar una tarjeta hacía un `setS` por `pointermove`:
+unas sesenta reconstrucciones del documento por segundo, cada una reproduciendo la animación de
+entrada de todo. Ahora el gesto escribe el estilo del elemento que se mueve y el estado sólo se entera
+al soltar, que es cuando de verdad ha pasado algo. Lo mismo con el arrastre de escritorio, el dock, la
+hoja que se baja con el dedo y las carátulas de la ruleta.
+
+**Por qué las hojas empujan una entrada en el historial.** Sin eso, el botón atrás del móvil hacía lo
+que hace en cualquier página: salirse — y en la app instalada, cerrarla. Ahora cada hoja abierta es
+una entrada, y **quien manda sobre cuántas hay abiertas es el historial**: al volver, `popstate` dice
+a qué profundidad quedarse y `recortarPila()` recorta. Por eso cerrar nunca toca el estado a mano,
+sino que pide un paso atrás y espera a que llegue. Las hojas además se apilan, así que contestar a una
+confirmación devuelve al título que estabas mirando y no al tablero.
+
 **Por qué CSP con hash.** GitHub Pages no permite cabeceras, así que va en un `<meta>` con el SHA-256
 del bloque de script. Bloquea cualquier script inyectado, y `connect-src` limita la salida al Worker.
 
@@ -205,7 +232,7 @@ sofa-club/
 ├── .gitattributes      `* -text`: sin conversión de finales de línea  ← protege el hash de la CSP
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS
 ├── configurar.ps1      hace los pasos 6-10 de la puesta en marcha; los secretos los pide wrangler
-├── test-app.js         40 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios
+├── test-app.js         45 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
 ├── test-worker.mjs     44 pruebas: identidad, clubes, secretos, creación de clubes, buscador
 ├── worker/
 │   ├── src/index.js    el Worker
@@ -220,8 +247,8 @@ sofa-club/
 
 Dentro de `index.html`, en orden: tokens CSS y estilos · configuración y claves · saneadores y
 `publicView` · `IMG`/`aplicarLocal`/`sanear`/`createApi` · `demoSeed` · constantes de la interfaz ·
-`cardHtml`/`buildCards` · cabecera, tablero, nav · las ocho hojas · `render` · acciones · gestos ·
-arranque.
+`cardHtml`/`buildCards` · cabecera, tablero, nav · las nueve hojas · `zonas`/`render` · navegación
+entre hojas · acciones · gestos · arranque.
 
 ---
 
@@ -298,9 +325,20 @@ título que salga en las dos.
 clave de un club sustituye la vieja · una invitación se recoge pero no se guarda · cada club guarda
 su copia local y una copia manipulada se sanea al leerla · salir de un club se lleva su clave y su
 copia y no toca las demás · el perfil del dispositivo se recuerda con acentos y se sanea · el número
-absoluto de episodio suma bien las temporadas anteriores y no se enseña cuando sería el mismo número
-(`absEp` y `epTxt` se extraen de `index.html` por su nombre y se evalúan solas, para probar el código
-de verdad y no una copia que envejecería en silencio).
+absoluto de episodio suma bien las temporadas anteriores y no se enseña cuando sería el mismo número ·
+la pila de hojas se recorta a la profundidad que pide el historial, y volver desde una confirmación
+apilada devuelve al detalle y no al tablero (`absEp`, `epTxt` y `recortarPila` se extraen de
+`index.html` por su nombre y se evalúan solas, para probar el código de verdad y no una copia que
+envejecería en silencio).
+
+**En navegador, midiendo con un `MutationObserver` por zona** (que es la única forma honesta de
+comprobar que algo *no* se repinta): veinte repintados sin cambios de estado tocan **cero nodos** ·
+cambiar de pestaña toca cabecera y tablero, nada más · abrir una hoja toca la hoja y la barra, y **no
+el tablero** · escribir cinco letras en el buscador toca la hoja dos veces (las del rebote), deja el
+tablero intacto y conserva el foco y el cursor · **deslizar una tarjeta entera no toca un solo nodo**,
+y al soltar pasada la mitad se mueve de verdad · la hoja se desliza al abrirse y no vuelve a hacerlo
+mientras escribes · atrás cierra la hoja sin salir de la página, y desde una confirmación apilada
+devuelve al título · el botón de cerrar mide 44×44 · sin errores de consola ni scroll horizontal.
 
 **En navegador, con dos clubes sembrados y un Worker de mentira en local:** el chip del club aparece
 sólo con más de uno · cambiar de club repinta el tablero al instante desde la copia local · la pista
@@ -357,6 +395,17 @@ sin errores de consola, sin scroll horizontal a 390 px y con las zonas pulsables
 - **En PowerShell, `curl` no es curl** — es `Invoke-WebRequest` disfrazado. Hay que escribir
   `curl.exe`. Y mandar JSON por `-d` desde PowerShell es una fuente de disgustos con las comillas:
   para eso está `Invoke-RestMethod`, que no tiene el problema.
+- **Los envoltorios de zona (`.rgn`) llevan `display:contents` y no es decorativo.** Si alguno pasa a
+  generar caja, la cabecera `sticky` se queda pegada a un contenedor de su propia altura y deja de
+  funcionar, sin ningún error por ninguna parte.
+- **`abrirHoja()` es la única forma correcta de abrir una hoja.** Un `setS({sheet:…})` directo la abre
+  igual de bien y deja el historial descuadrado: a partir de ahí el botón atrás se come entradas que
+  no existen o se sale de la app. Las únicas excepciones a propósito son la bienvenida —que no se
+  cierra, porque todavía no eres de ningún club— y los saltos entre detalles del mismo nivel.
+- **Lo que escribe un gesto a mano no está en el estado.** El `transform` de la tarjeta, la clase `on`
+  de la línea de destino y la `over` del dock se pintan directamente sobre el elemento y desaparecen
+  en cuanto se repinta esa zona. Es lo que se quiere, pero si añades un efecto nuevo de gesto,
+  recuerda que nadie lo va a reconstruir por ti.
 - `configurar.ps1` va en **UTF-8 con BOM** a propósito: PowerShell 5.1 lee los `.ps1` sin BOM como
   ANSI y destroza los acentos hasta hacerlo irreparsable, antes incluso de llegar a la primera línea.
   Si alguna herramienta se lo quita al editarlo, hay que devolvérselo.

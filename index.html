@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KtJnySgd2SGxC49iRAmwYvIftCBdJuhvloKn/zgoIuQ='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WtS/pi+i6SzI2ZwH/X2V5/8lO1YQAa6Dbuu0Wbv1ONU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -40,6 +40,9 @@ input{font:inherit;color:inherit}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:#ffffff1f;border-radius:999px;border:3px solid transparent;background-clip:content-box}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+/* zonas de pintado: no generan caja, así que la cabecera pegajosa y el tablero
+   se comportan como si fueran hijos directos de #app, que es lo que eran */
+.rgn{display:contents}
 
 /* ═══════════ ÁTOMOS ═══════════ */
 .b{background:var(--surface);border-radius:20px;padding:15px}
@@ -112,7 +115,9 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 .colhead b{font-weight:800;font-size:15px;color:var(--c);letter-spacing:-.1px}
 .colhead u{font-size:12.5px;font-weight:800;color:var(--c);text-decoration:none;
   background:color-mix(in oklab,var(--c) 14%,transparent);border-radius:999px;padding:2px 8px}
-.dropline{height:4px;border-radius:999px;background:var(--c);box-shadow:0 0 14px var(--c)}
+/* siempre puesta, invisible: el arrastre la enciende sin repintar el tablero */
+.dropline{height:4px;border-radius:999px;background:var(--c);box-shadow:0 0 14px var(--c);display:none}
+.dropline.on{display:block}
 @media (min-width:900px){
   .board{grid-template-columns:repeat(3,minmax(230px,1fr)) 74px;padding:10px 22px 160px;gap:18px}
   .board[data-dropped="open"]{grid-template-columns:repeat(4,minmax(230px,1fr))}
@@ -130,8 +135,11 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 
 /* ═══════════ TARJETA ═══════════ */
 .cw{position:relative}
+/* la pista de deslizamiento está siempre puesta y empieza invisible: el gesto la
+   enciende escribiendo estilos, sin pasar por el pintado */
 .swipe{position:absolute;inset:0;border-radius:20px;display:flex;align-items:center;
-  justify-content:space-between;padding:0 20px;font-size:24px}
+  justify-content:space-between;padding:0 20px;font-size:24px;opacity:0}
+.swipe>span{opacity:0}
 .card{position:relative;background:color-mix(in oklab,var(--c) 7%,var(--surface));border-radius:20px;padding:12px;
   box-shadow:0 8px 24px -16px #000c;touch-action:pan-y;will-change:transform;
   transition:transform .22s var(--spring),opacity .18s ease}
@@ -204,7 +212,9 @@ nav button.pri i{font-size:25px}
 .fab{position:fixed;right:26px;bottom:26px;z-index:40;height:58px;padding:0 24px;border-radius:999px;
   background:var(--watching);color:var(--ink);font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:10px;
   box-shadow:0 14px 34px -10px var(--watching),0 4px 12px #0006}
-.ghostcard{position:fixed;z-index:60;pointer-events:none;transform:rotate(2deg) scale(1.03);
+/* la posición la escribe el arrastre en «translate», que se compone aparte del
+   transform y no obliga a repintar el tablero en cada pointermove */
+.ghostcard{position:fixed;left:0;top:0;z-index:60;pointer-events:none;transform:rotate(2deg) scale(1.03);
   border-radius:20px;padding:12px;background:color-mix(in oklab,var(--c) 12%,var(--surface));
   box-shadow:0 30px 60px -18px #000c,0 0 0 1px #ffffff1a}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:70;padding:16px 14px calc(20px + env(safe-area-inset-bottom));
@@ -229,12 +239,21 @@ nav button.pri i{font-size:25px}
 
 /* ═══════════ HOJAS ═══════════ */
 .ov{position:fixed;inset:0;z-index:100;background:#0A0812b8;backdrop-filter:blur(3px);
-  display:flex;align-items:flex-end;justify-content:center;padding:0;animation:fadeIn .18s ease both}
-.sheet{background:var(--surface-2);width:100%;max-width:100%;max-height:92vh;border-radius:28px 28px 0 0;
+  display:flex;align-items:flex-end;justify-content:center;padding:0}
+.sheet{position:relative;background:var(--surface-2);width:100%;max-width:100%;max-height:92vh;border-radius:28px 28px 0 0;
   display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -20px 60px -20px #000e;
-  animation:sheetUp .24s var(--spring) both}
+  will-change:transform;transition:transform .2s var(--spring)}
+/* la entrada se anima sólo al abrir la hoja, no cada vez que cambia algo dentro:
+   la clase la pone el pintado a mano sobre el elemento recién creado */
+.ov.anim{animation:fadeIn .18s ease both}
+.sheet.anim{animation:sheetUp .24s var(--spring) both}
 .handle{flex:none;padding:10px 0 6px;display:grid;place-items:center;cursor:grab;touch-action:none}
 .handle i{width:44px;height:5px;border-radius:999px;background:#ffffff2b;display:block}
+/* cerrar / volver: hasta ahora sólo se salía tocando fuera o arrastrando la
+   barrita, y en un móvil eso no lo encuentra nadie */
+.xsheet{position:absolute;top:6px;right:8px;z-index:2;width:44px;height:44px;border-radius:999px;
+  display:grid;place-items:center;font-size:22px;font-weight:800;color:var(--text-dim);line-height:1}
+.xsheet:active{background:#ffffff12}
 .scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:6px 18px calc(24px + env(safe-area-inset-bottom))}
 @media (min-width:900px){
   .ov{align-items:center;padding:28px}
@@ -312,7 +331,9 @@ nav button.pri i{font-size:25px}
 </head>
 <body>
 <div class="sr" aria-live="polite" id="live"></div>
-<div id="app"></div>
+<!-- Cinco zonas que se repintan por separado. Llevan display:contents, así que
+     para el diseño esto es exactamente igual que un solo contenedor. -->
+<div id="app"><div class="rgn" id="rhead"></div><div class="rgn" id="rmain"></div><div class="rgn" id="rnav"></div><div class="rgn" id="rfloat"></div><div class="rgn" id="rsheet"></div></div>
 <script>
 "use strict";
 /* ══════════════════════════════════════════════════════════════════════════
@@ -580,7 +601,15 @@ function createApi(cfg){
   const catalogo = {};
 
   const emit = () => { const s = state; subs.forEach((f) => { try { f(s); } catch(e){ console.error(e); } }); };
-  const setSync = (st, n) => { sync = { state: st, pending: n == null ? cola.length : n }; emit(); };
+  const setSync = (st, n, silencioso) => {
+    const antes = sync;
+    sync = { state: st, pending: n == null ? cola.length : n };
+    /* «silencioso» significa: el tablero volvió igual que estaba. Si además el
+       estado de sincronización tampoco cambió, no hay nada que contarle a la
+       pantalla — emitir aquí es lo que la hacía parpadear cada minuto. */
+    if (silencioso && antes.state === sync.state && antes.pending === sync.pending) return;
+    emit();
+  };
   const guardarCache = () => { if (!demo) guardarCacheDe(grupoDe(cfg.active), state); };
 
   async function llamar(ruta, opciones){
@@ -639,7 +668,14 @@ function createApi(cfg){
   }
   async function refrescar(){
     if (demo || sinClave || cola.length) return;
-    try { const r = await llamar('/api/session', { method: 'POST' }); state = sanear(r.state); guardarCache(); setSync('idle', 0); }
+    try {
+      const r = await llamar('/api/session', { method: 'POST' });
+      const nuevo = sanear(r.state);
+      const igual = JSON.stringify(nuevo) === JSON.stringify(state);
+      state = nuevo;
+      if (!igual) guardarCache();       /* y si vino igual, ni escribir en disco */
+      setSync('idle', 0, igual);
+    }
     catch(e){ if (e.code === 'sin-clave'){ sinClave = true; setSync('error'); } else if (!navigator.onLine) setSync('offline'); }
   }
 
@@ -896,7 +932,7 @@ const S = {
   tab:'watching', collapsed:true, theme:'neon',
   q:'', f:Object.assign({}, F0), fd:null,
   drag:null, swipe:null, dock:null, anim:{}, confetti:[],
-  sheet:null, sheetDy:0, toast:null, pendingDel:null,
+  sheet:null, pila:[], toast:null, pendingDel:null,
   noteDraft:'', addQ:'', addResults:null, addSearching:false, addPick:null,
   roul:null, statScope:'me', statYear:'all',
   prof:null, profRec:false, invite:null, confirmAsk:null, nuevoClub:'', creando:false,
@@ -1043,12 +1079,14 @@ const bgImg = (url) => {
 function cardHtml(it, status, order, users){
   const c = COL(status).v;
   const key = it.id + '|' + status + '|' + order;
-  const sw = S.swipe && S.swipe.key === key ? S.swipe.dx : 0;
   const isDrag = S.drag && S.drag.key === key;
   const fi = ['wish','watching','done'].indexOf(status);
   const nxt = COL(['wish','watching','done'][clamp(fi + 1, 0, 2)]);
   const prv = COL(['wish','watching','done'][clamp(fi - 1, 0, 2)]);
-  const anim = S.anim[key] || S.anim[it.id + '|' + status] || 'in';
+  /* «in» sólo si la tarjeta no estaba en el repintado anterior. Antes lo llevaban
+     todas siempre, así que cualquier repintado las desvanecía y las traía de
+     vuelta a la vez: ese era el parpadeo. */
+  const anim = S.anim[key] || S.anim[it.id + '|' + status] || (vistas[key] ? '' : 'in');
   const me = meId();
   const orig = it.originalTitle && norm(it.originalTitle) !== norm(it.title) ? it.originalTitle : null;
   const meta = (it.type === 'tv' ? '📺' : '🎬') + ' ' + (it.year || '') + (it.totalEpisodes ? ' · ' + it.totalEpisodes + ' ep.' : (it.runtime ? ' · ' + it.runtime + ' min' : ''));
@@ -1146,10 +1184,10 @@ function cardHtml(it, status, order, users){
 
   const showProp = !users.includes(it.addedBy) || users.length > 1;
   return '<div class="cw">'
-    + (Math.abs(sw) > 4 ? '<div class="swipe" style="background:' + (sw > 0 ? soft(nxt.v, 26) : soft(prv.v, 26)) + '">'
-        + '<span>' + (sw < 0 ? prv.emoji : '') + '</span><span>' + (sw > 0 ? nxt.emoji : '') + '</span></div>' : '')
-    + '<div class="card' + extraCls + (isDrag ? ' ghost' : '') + '" data-card="' + key + '" data-anim="' + anim + '"'
-    + ' style="--c:' + c + ';transform:translateX(' + sw + 'px)' + (sw ? ';transition:none' : '') + '">'
+    + '<div class="swipe" data-swipe><span>' + prv.emoji + '</span><span>' + nxt.emoji + '</span></div>'
+    + '<div class="card' + extraCls + (isDrag ? ' ghost' : '') + '" data-card="' + key + '"'
+    + (anim ? ' data-anim="' + anim + '"' : '')
+    + ' style="--c:' + c + '">'
     + '<div class="ctop">'
     + (poster ? '<div class="post" role="img" aria-label="' + esc(it.title) + '" style="' + bgImg(poster) + '"></div>'
               : '<div class="post ink">' + esc(ini) + '</div>')
@@ -1273,11 +1311,10 @@ function boardHtml(){
     + COLS.map((c) => {
       const cards = buildCards(c.key);
       const collapsed = c.key === 'dropped' && S.collapsed;
-      const dragOver = S.drag && S.drag.over === c.key && parseKey(S.drag.key).status !== c.key;
       return '<section class="col" data-key="' + c.key + '" data-col="' + c.key + '" data-active="' + (S.tab === c.key) + '" data-collapsed="' + collapsed + '" style="--c:' + c.v + ';min-width:0">'
         + '<div class="colhead" data-a="collapse:' + c.key + '"><span style="font-size:16px">' + c.emoji + '</span><b>' + c.label + '</b><u>' + cards.length + '</u></div>'
         + '<div class="cards">'
-        + (dragOver ? '<div class="dropline"></div>' : '')
+        + '<div class="dropline" data-dropline></div>'
         + cards.map((g) => cardHtml(g.it, c.key, g.order, g.users)).join('')
         + (!cards.length ? '<div class="empty">' + mascot(54, c.v, c.v, .22)
             + '<p>' + (hasF() ? 'nada por aquí con esos filtros' : EMPTY[c.key][0] + ', ' + EMPTY[c.key][2]) + '</p>'
@@ -1304,7 +1341,7 @@ function floatHtml(){
   let h = '';
   if (S.drag){
     const d = S.drag;
-    h += '<div class="ghostcard" style="--c:' + d.c + ';left:' + d.x + 'px;top:' + d.y + 'px;width:' + d.w + 'px">'
+    h += '<div class="ghostcard" data-ghost style="--c:' + d.c + ';width:' + d.w + 'px;translate:' + d.x + 'px ' + d.y + 'px">'
       + '<div style="display:flex;gap:12px;align-items:center">'
       + '<div style="width:44px;height:66px;border-radius:10px;display:grid;place-items:center;font-weight:800;background:' + soft(d.c, 20) + ';color:' + d.c + '">' + esc(d.ini) + '</div>'
       + '<div style="min-width:0"><div style="font-weight:800;font-size:15px">' + esc(d.title) + '</div>'
@@ -1312,7 +1349,7 @@ function floatHtml(){
   }
   if (S.dock){
     h += '<div class="dock"><p>suelta en la columna que quieras</p><div>'
-      + COLS.map((c) => '<div class="dockt' + (S.dock.over === c.key ? ' over' : '') + '" data-dockt="' + c.key + '" style="--c:' + c.v + '">'
+      + COLS.map((c) => '<div class="dockt" data-dockt="' + c.key + '" style="--c:' + c.v + '">'
           + '<i>' + c.emoji + '</i><b>' + c.label + '</b></div>').join('')
       + '</div></div>';
   }
@@ -1557,7 +1594,7 @@ function rouletteHtml(){
   }
   if (r.spinning){
     h += '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:26px 0 34px">'
-      + '<div class="spin" style="' + bgImg(r.frame) + '"></div><div style="font-weight:800;font-size:15px">barajando…</div></div>';
+      + '<div class="spin" data-spin style="' + bgImg(r.frame) + '"></div><div style="font-weight:800;font-size:15px">barajando…</div></div>';
   }
   if (r.result && !r.spinning){
     const res = findItem(r.result);
@@ -1828,32 +1865,52 @@ function sheetHtml(){
   else if (k === 'filters') inner = filtersHtml();
   else if (k === 'confirm') inner = confirmHtml();
   if (!inner) return '';
+  /* la bienvenida no se cierra: todavía no eres de ningún club */
+  const atras = S.pila.length > 0;
+  const salida = k === 'welcome' ? ''
+    : '<button class="xsheet" data-a="' + (atras ? 'atras' : 'cerrar') + '" aria-label="'
+      + (atras ? 'Volver' : 'Cerrar') + '">' + (atras ? '‹' : '×') + '</button>';
   return '<div class="ov" data-a="close">'
-    + '<div class="sheet" data-sheet style="transform:translateY(' + (S.sheetDy || 0) + 'px)">'
-    + '<div class="handle" data-handle><i></i></div>'
+    + '<div class="sheet" data-sheet>'
+    + '<div class="handle" data-handle><i></i></div>' + salida
     + '<div class="scroll">' + inner + '</div></div></div>';
 }
-function view(){
-  if (!S.data) return headerHtml() + bootHtml();
+/* ── pintado por zonas ────────────────────────────────────────────────────────
+   Esto era un innerHTML del documento entero en cada cambio de estado, y hacía
+   dos cosas malas: reproducía la animación de entrada de todas las tarjetas —que
+   nacen con opacity 0, o sea un parpadeo en toda regla— y tiraba el foco y el
+   scroll. Ahora cada zona recuerda el HTML que pintó y sólo toca el DOM si ha
+   cambiado de verdad. Quieto en la pantalla, el repaso de cada minuto ya no
+   mueve un solo nodo.                                                          */
+const ZONAS = ['rhead', 'rmain', 'rnav', 'rfloat', 'rsheet'];
+const pintado = {};
+let vistas = {};          /* tarjetas que ya estaban en el repintado anterior */
+let hojaPintada = null;   /* qué hoja había abierta, para animarla sólo al abrir */
+
+function zonas(){
+  if (!S.data) return { rhead:headerHtml(), rmain:bootHtml(), rnav:'', rfloat:'', rsheet:'' };
   /* Con una invitación en la mano SIEMPRE hay que preguntar quién eres, aunque
      ya estés dentro de otro club: si no, entrar en un segundo club desde un
      móvil que ya tiene uno es imposible y la invitación se pierde en silencio.
      Las redundantes ya las ha descartado el Api antes de llegar aquí.          */
   const needsWelcome = (Api.hayInvitacion && Api.hayInvitacion())
     || !S.data.me || !S.data.users.some((u) => u.id === S.data.me);
-  if (needsWelcome && (!S.sheet || S.sheet.kind !== 'welcome')) S.sheet = { kind:'welcome' };
+  if (needsWelcome && (!S.sheet || S.sheet.kind !== 'welcome')){ S.sheet = { kind:'welcome' }; S.pila = []; }
   if (needsWelcome && !S.prof){
     const rec = Api.perfilDelDispositivo ? Api.perfilDelDispositivo() : null;
     S.prof = rec ? { name:rec.name, emoji:rec.emoji, color:rec.color } : { name:'', emoji:'🐻', color:PALETTE[0] };
     S.profRec = !!rec;
   }
-  return headerHtml()
-    + (Api.isDemo() ? '<div class="banner">estás en <b>modo demo</b> con datos de ejemplo: nada se guarda. Abre el enlace de tu club para entrar de verdad.</div>' : '')
-    + (Api.authFailed() ? '<div class="banner" style="color:var(--bad);background:color-mix(in oklab,#FF6B8A 14%,var(--surface))">tu clave ya no vale: puede que te hayan sacado del club o que se haya generado otra. Pide un enlace nuevo.</div>' : '')
-    + (S.booting ? bootHtml() : boardHtml())
-    + navHtml()
-    + '<button class="fab desk" data-a="add"><span style="font-size:26px;line-height:1;margin-top:-2px">+</span> Añadir un título</button>'
-    + floatHtml() + sheetHtml();
+  return {
+    rhead: headerHtml(),
+    rmain: (Api.isDemo() ? '<div class="banner">estás en <b>modo demo</b> con datos de ejemplo: nada se guarda. Abre el enlace de tu club para entrar de verdad.</div>' : '')
+      + (Api.authFailed() ? '<div class="banner" style="color:var(--bad);background:color-mix(in oklab,#FF6B8A 14%,var(--surface))">tu clave ya no vale: puede que te hayan sacado del club o que se haya generado otra. Pide un enlace nuevo.</div>' : '')
+      + (S.booting ? bootHtml() : boardHtml()),
+    rnav: navHtml()
+      + '<button class="fab desk" data-a="add"><span style="font-size:26px;line-height:1;margin-top:-2px">+</span> Añadir un título</button>',
+    rfloat: floatHtml(),
+    rsheet: sheetHtml(),
+  };
 }
 let rafPending = false;
 function render(){
@@ -1861,12 +1918,40 @@ function render(){
   rafPending = true;
   requestAnimationFrame(() => {
     rafPending = false;
-    const root = document.getElementById('app');
+    document.documentElement.setAttribute('data-theme', S.theme === 'malva' ? '' : S.theme);
+    const z = zonas();
     const act = document.activeElement;
     const fid = act && act.id ? act.id : null;
     const ss = fid ? act.selectionStart : null, se = fid ? act.selectionEnd : null;
-    document.documentElement.setAttribute('data-theme', S.theme === 'malva' ? '' : S.theme);
-    root.innerHTML = view();
+    const scr = document.querySelector('[data-sheet] .scroll');
+    const scrTop = scr ? scr.scrollTop : 0;
+
+    let algo = false;
+    for (const id of ZONAS){
+      if (pintado[id] === z[id]) continue;          /* esta zona no ha cambiado */
+      pintado[id] = z[id];
+      document.getElementById(id).innerHTML = z[id];
+      algo = true;
+    }
+    if (!algo) return;
+
+    const kind = S.sheet ? S.sheet.kind : null;
+    if (kind && kind !== hojaPintada){
+      /* recién abierta: que se deslice. La clase va aquí y no en el HTML para
+         que no forme parte de lo que se compara arriba */
+      const ov = document.querySelector('.ov'), sh = document.querySelector('[data-sheet]');
+      if (ov) ov.classList.add('anim');
+      if (sh) sh.classList.add('anim');
+    } else if (kind && scrTop){
+      /* seguía abierta: no la mandes otra vez al principio */
+      const el = document.querySelector('[data-sheet] .scroll');
+      if (el) el.scrollTop = scrTop;
+    }
+    hojaPintada = kind;
+
+    vistas = {};
+    document.querySelectorAll('[data-card]').forEach((e) => { vistas[e.dataset.card] = 1; });
+
     if (fid){
       const el = document.getElementById(fid);
       if (el && el !== document.activeElement){
@@ -1878,19 +1963,51 @@ function render(){
 }
 
 /* ── acciones ── */
-function openDetail(key){ setS({ sheet:{ kind:'detail', key:key }, sheetDy:0, noteDraft:'' }); }
-function openAdd(){ setS({ sheet:{ kind:'add' }, sheetDy:0, addQ:'', addResults:null, addPick:null, addSearching:false });
+/* ── navegación entre hojas ───────────────────────────────────────────────────
+   Cada hoja abierta empuja una entrada en el historial, así que el botón atrás
+   del móvil cierra la hoja en vez de sacarte de la aplicación. Quien manda sobre
+   cuántas hay abiertas es el historial: al volver, «popstate» dice a qué
+   profundidad hay que quedarse y la pila se recorta hasta ahí. Por eso cerrar
+   nunca toca el estado a mano — pide un paso atrás y deja que llegue.          */
+function abrirHoja(sheet, extra, apilar){
+  if (apilar && S.sheet) S.pila.push(S.sheet);
+  else S.pila = [];
+  history.pushState({ sc: S.pila.length + 1 }, '');
+  setS(Object.assign({ sheet:sheet }, extra || {}));
+}
+const profundidad = () => S.pila.length + (S.sheet ? 1 : 0);
+const closeSheet = () => {
+  const n = profundidad();
+  if (n > 0) history.go(-n);
+  else setS({ sheet:null, pila:[], confirmAsk:null });
+};
+/* recorta la pila hasta la profundidad que pide el historial. Aparte porque es
+   lo único de todo esto que se puede probar sin navegador. */
+function recortarPila(sheet, pila, objetivo){
+  let prof = pila.length + (sheet ? 1 : 0);
+  while (prof > objetivo){ sheet = pila.pop() || null; prof--; }
+  return { sheet:sheet, pila:pila };
+}
+window.addEventListener('popstate', (e) => {
+  const objetivo = (e.state && e.state.sc) || 0;
+  if (profundidad() <= objetivo) return;
+  const r = recortarPila(S.sheet, S.pila, objetivo);
+  S.sheet = r.sheet; S.pila = r.pila;
+  setS({ confirmAsk:(S.sheet && S.sheet.kind === 'confirm') ? S.confirmAsk : null });
+});
+
+function openDetail(key){ abrirHoja({ kind:'detail', key:key }, { noteDraft:'' }); }
+function openAdd(){ abrirHoja({ kind:'add' }, { addQ:'', addResults:null, addPick:null, addSearching:false });
   setTimeout(() => { const el = document.getElementById('addi'); if (el) el.focus(); }, 140); }
 function openSettings(){
   const me = user(meId());
-  setS({ sheet:{ kind:'settings' }, sheetDy:0, invite:null, saveState:'idle', inviteState:'idle', copyState:'idle',
+  abrirHoja({ kind:'settings' }, { invite:null, saveState:'idle', inviteState:'idle', copyState:'idle',
     profRec:false, prof:{ name:me.name === '¿?' ? '' : me.name, emoji:me.emoji, color:me.color } });
 }
 function openRoulette(){
-  setS({ sheet:{ kind:'roulette' }, sheetDy:0,
+  abrirHoja({ kind:'roulette' }, {
     roul:{ users:[meId()], time:null, kind:'both', provs:[], spinning:false, result:null, frame:null, nothing:false, last:(S.roul && S.roul.last) || null } });
 }
-const closeSheet = () => setS({ sheet:null, sheetDy:0, confirmAsk:null });
 
 function move(key, to, rect){
   const k = parseKey(key), it = findItem(k.itemId); if (!it) return;
@@ -1959,7 +2076,16 @@ function spin(){
   setS({ roul:Object.assign(r, { spinning:true, result:null, nothing:false, frame:Api.imageUrl(pool[0].item.poster, 'lg') }) });
   let i = 0;
   clearInterval(spinT);
-  spinT = setInterval(() => { i++; setS({ roul:Object.assign({}, S.roul, { frame:Api.imageUrl(pool[i % pool.length].item.poster, 'lg') }) }); }, 95);
+  /* diez carátulas por segundo no son diez repintados del documento: se cambia
+     la imagen del elemento y ya. La URL la valida imageUrl y la CSP sólo deja
+     cargar de image.tmdb.org, así que no hay por dónde colar nada. */
+  spinT = setInterval(() => {
+    i++;
+    const el = document.querySelector('[data-spin]');
+    if (!el) return;
+    const u = Api.imageUrl(pool[i % pool.length].item.poster, 'lg');
+    el.style.backgroundImage = u ? 'url("' + u + '")' : '';
+  }, 95);
   setTimeout(() => {
     clearInterval(spinT);
     setS({ roul:Object.assign({}, S.roul, { spinning:false, result:chosen.item.id, last:chosen.item.id, weight:chosen.w }) });
@@ -2013,6 +2139,10 @@ document.addEventListener('click', (e) => {
   const verb = i < 0 ? raw : raw.slice(0, i);
   const arg = i < 0 ? null : raw.slice(i + 1);
 
+  /* «close» es el fondo oscuro y por eso ignora los toques de dentro; el botón
+     de la esquina vive dentro de la hoja y necesita verbos propios */
+  if (verb === 'cerrar'){ closeSheet(); return; }
+  if (verb === 'atras'){ history.back(); return; }
   if (verb === 'close'){ if (e.target.closest('.sheet')) return; closeSheet(); return; }
   if (Date.now() - blockClick < 320 && el.closest('[data-card]')) return;
   e.stopPropagation();
@@ -2027,9 +2157,9 @@ document.addEventListener('click', (e) => {
   switch (verb){
     /* cabecera y navegación */
     case 'sync': if (Api.isDemo()) toast('esto es la demo: abre el enlace con las claves para conectar vuestro tablero'); else Api.retry(); break;
-    case 'filters': setS({ sheet:{ kind:'filters' }, fd:Object.assign({}, S.f), sheetDy:0 }); break;
+    case 'filters': abrirHoja({ kind:'filters' }, { fd:Object.assign({}, S.f) }); break;
     case 'roulette': openRoulette(); break;
-    case 'stats': setS({ sheet:{ kind:'stats' }, sheetDy:0 }); break;
+    case 'stats': abrirHoja({ kind:'stats' }); break;
     case 'settings': openSettings(); break;
     case 'add': openAdd(); break;
     case 'tab': setS({ tab:arg }); break;
@@ -2038,7 +2168,7 @@ document.addEventListener('click', (e) => {
       if (arg === 'board') closeSheet();
       else if (arg === 'add') openAdd();
       else if (arg === 'roulette') openRoulette();
-      else if (arg === 'stats') setS({ sheet:{ kind:'stats' }, sheetDy:0 });
+      else if (arg === 'stats') abrirHoja({ kind:'stats' });
       else if (arg === 'settings') openSettings();
       break;
     case 'toastact': { const t = S.toast; if (t && t.action) t.action(); setS({ toast:null }); break; }
@@ -2105,7 +2235,8 @@ document.addEventListener('click', (e) => {
     }
     case 'd.del': {
       const k = parseKey(S.sheet.key), x = findItem(k.itemId);
-      setS({ confirmAsk:{ kind:'del', itemId:k.itemId, title:x.title }, sheet:{ kind:'confirm' } });
+      /* apilada sobre el detalle: al contestar «mejor no» vuelves al título */
+      abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'del', itemId:k.itemId, title:x.title } }, true);
       break;
     }
     case 'd.note': { const k = parseKey(S.sheet.key); call(() => Api.removeNote(k.itemId, arg)); break; }
@@ -2193,11 +2324,11 @@ document.addEventListener('click', (e) => {
         else if (w === 'color') setS({ prof:Object.assign({}, p, { color:decodeURIComponent(arg) }) });
         else if (w === 'save') saveProfile(false);
         else if (w === 'finish') saveProfile(true);
-        else if (w === 'welcome') setS({ sheet:{ kind:'welcome' }, sheetDy:0, profRec:false, prof:{ name:'', emoji:'🐻', color:PALETTE[0] } });
-        else if (w === 'rmuser') setS({ confirmAsk:{ kind:'user', userId:arg, name:user(arg).name }, sheet:{ kind:'confirm' } });
+        else if (w === 'welcome') setS({ sheet:{ kind:'welcome' }, pila:[], profRec:false, prof:{ name:'', emoji:'🐻', color:PALETTE[0] } });
+        else if (w === 'rmuser') abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'user', userId:arg, name:user(arg).name } }, true);
         else if (w === 'copy') copyInvite();
         else if (w === 'forget') Api.olvidarDispositivo();
-        else if (w === 'clubs') setS({ sheet:{ kind:'clubs' }, sheetDy:0, nuevoClub:'', creando:false });
+        else if (w === 'clubs') abrirHoja({ kind:'clubs' }, { nuevoClub:'', creando:false });
         else if (w === 'crear'){
           if (S.creando) break;
           /* norm() ya quita los acentos, con el rango de diacríticos escapado.
@@ -2226,7 +2357,7 @@ document.addEventListener('click', (e) => {
         }
         else if (w === 'leave'){
           const s = decodeURIComponent(arg);
-          setS({ confirmAsk:{ kind:'leave', secret:s, group:grupoDe(s) }, sheet:{ kind:'confirm' } });
+          abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'leave', secret:s, group:grupoDe(s) } }, true);
         }
         else if (w === 'invite'){
           if (S.inviteState === 'making') break;
@@ -2262,24 +2393,61 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-/* ── gestos (Pointer Events, ratón y dedo con el mismo código) ── */
+/* ── gestos (Pointer Events, ratón y dedo con el mismo código) ──────────────────
+   Ninguno pasa por el pintado. Antes cada pointermove reconstruía el documento
+   entero —unas sesenta veces por segundo mientras deslizas una tarjeta—, así que
+   ahora el gesto escribe el estilo del elemento que se mueve y el estado sólo se
+   entera al soltar, que es cuando de verdad ha pasado algo.                     */
+function pintarDeslizamiento(card, dx){
+  if (!card) return;
+  card.style.transform = dx ? 'translateX(' + dx + 'px)' : '';
+  card.style.transition = dx ? 'none' : '';
+  const hint = card.parentElement && card.parentElement.querySelector('[data-swipe]');
+  if (!hint || !card.dataset.card) return;
+  const fi = ['wish','watching','done'].indexOf(parseKey(card.dataset.card).status);
+  const nxt = COL(['wish','watching','done'][clamp(fi + 1, 0, 2)]);
+  const prv = COL(['wish','watching','done'][clamp(fi - 1, 0, 2)]);
+  const on = Math.abs(dx) > 4;
+  hint.style.opacity = on ? '1' : '0';
+  hint.style.background = on ? soft(dx > 0 ? nxt.v : prv.v, 26) : '';
+  hint.children[0].style.opacity = dx < 0 ? '1' : '0';
+  hint.children[1].style.opacity = dx > 0 ? '1' : '0';
+}
+const marcarColumna = (key) => document.querySelectorAll('[data-dropline]').forEach((el) => {
+  const col = el.closest('[data-col]');
+  el.classList.toggle('on', !!col && col.dataset.col === key);
+});
+const marcarDock = (key) => document.querySelectorAll('[data-dockt]').forEach((el) => {
+  el.classList.toggle('over', el.dataset.dockt === key);
+});
+
 let G = null, lpT = null, moved = false;
 function detach(){ window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp); }
-function endGesture(){ clearTimeout(lpT); detach(); G = null; if (S.swipe || S.drag || S.dock) setS({ swipe:null, drag:null, dock:null }); }
+function endGesture(){
+  clearTimeout(lpT); detach();
+  if (G && G.mode === 'swipe') pintarDeslizamiento(G.el, 0);
+  G = null;
+  if (S.drag || S.dock) setS({ drag:null, dock:null });
+}
 document.addEventListener('pointerdown', (e) => {
   const handle = e.target.closest('[data-handle]');
   if (handle){
     const y0 = e.clientY;
-    const mv = (ev) => setS({ sheetDy:Math.max(0, ev.clientY - y0) });
-    const up = (ev) => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
-      if (Math.max(0, ev.clientY - y0) > 90) closeSheet(); else setS({ sheetDy:0 }); };
+    const hoja = handle.closest('[data-sheet]');
+    if (hoja) hoja.style.transition = 'none';
+    const mv = (ev) => { if (hoja) hoja.style.transform = 'translateY(' + Math.max(0, ev.clientY - y0) + 'px)'; };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+      if (hoja){ hoja.style.transition = ''; hoja.style.transform = ''; }
+      if (Math.max(0, ev.clientY - y0) > 90) closeSheet();
+    };
     window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
     return;
   }
   const cardEl = e.target.closest('[data-card]');
   if (cardEl){
     if (e.button > 0 || e.target.closest('[data-a]')) return;
-    G = { key:cardEl.dataset.card, x0:e.clientX, y0:e.clientY, r:cardEl.getBoundingClientRect(), mode:null };
+    G = { key:cardEl.dataset.card, el:cardEl, dx:0, x0:e.clientX, y0:e.clientY, r:cardEl.getBoundingClientRect(), mode:null };
     moved = false;
     window.addEventListener('pointermove', onMove, { passive:false });
     window.addEventListener('pointerup', onUp);
@@ -2287,8 +2455,10 @@ document.addEventListener('pointerdown', (e) => {
     if (S.isMobile){
       lpT = setTimeout(() => {
         if (!G || G.mode) return;
-        G.mode = 'dock'; moved = true; buzz(12);
-        setS({ dock:{ key:G.key, over:null } });
+        G.mode = 'dock'; moved = true; buzz(12); G.over = null;
+        setS({ dock:{ key:G.key } });
+        /* el dock se pinta en el fotograma siguiente: medirlo antes daría nada */
+        requestAnimationFrame(() => { if (G) G.docks = [...document.querySelectorAll('[data-dockt]')].map((el) => ({ key:el.dataset.dockt, r:el.getBoundingClientRect() })); });
       }, 350);
     }
     return;
@@ -2322,6 +2492,9 @@ function onMove(e){
       G.mode = 'drag';
       const k = parseKey(G.key), it = findItem(k.itemId); if (!it){ endGesture(); return; }
       const us = groupUsers(it, k.status, k.order), c = COL(k.status).v;
+      /* los rectángulos de las columnas se miden una vez, no en cada movimiento */
+      G.cols = [...document.querySelectorAll('[data-col]')].map((el) => ({ key:el.dataset.col, r:el.getBoundingClientRect() }));
+      G.over = k.status;
       setS({ drag:{ key:G.key, w:G.r.width, x:G.r.left, y:G.r.top, ox:G.x0 - G.r.left, oy:G.y0 - G.r.top,
         over:k.status, c:c, title:it.title, ini:it.title.slice(0, 2).toUpperCase(),
         who: us.map((u) => user(u).emoji).join(' ') + ' ' + (us.length > 1 ? us.length + ' personas' : user(us[0]).name) } });
@@ -2330,41 +2503,45 @@ function onMove(e){
     else { endGesture(); return; }
   }
   moved = true;
-  if (G.mode === 'swipe'){ e.preventDefault(); setS({ swipe:{ key:G.key, dx:clamp(dx, -150, 150) } }); }
+  if (G.mode === 'swipe'){
+    e.preventDefault();
+    G.dx = clamp(dx, -150, 150);
+    pintarDeslizamiento(G.el, G.dx);
+  }
   else if (G.mode === 'drag'){
     e.preventDefault();
     let over = null;
-    document.querySelectorAll('[data-col]').forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (e.clientX >= r.left && e.clientX <= r.right) over = el.dataset.col;
-    });
-    setS({ drag:Object.assign({}, S.drag, { x:e.clientX - S.drag.ox, y:e.clientY - S.drag.oy, over:over || S.drag.over }) });
+    (G.cols || []).forEach((c) => { if (e.clientX >= c.r.left && e.clientX <= c.r.right) over = c.key; });
+    const ghost = document.querySelector('[data-ghost]');
+    if (ghost) ghost.style.translate = (e.clientX - S.drag.ox) + 'px ' + (e.clientY - S.drag.oy) + 'px';
+    if (over && over !== G.over){
+      G.over = over;
+      marcarColumna(over !== parseKey(G.key).status ? over : null);
+    }
   }
   else if (G.mode === 'dock'){
     e.preventDefault();
     let over = null;
-    document.querySelectorAll('[data-dockt]').forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (e.clientX >= r.left - 4 && e.clientX <= r.right + 4 && e.clientY >= r.top - 30) over = el.dataset.dockt;
+    (G.docks || []).forEach((d) => {
+      if (e.clientX >= d.r.left - 4 && e.clientX <= d.r.right + 4 && e.clientY >= d.r.top - 30) over = d.key;
     });
-    if (over !== S.dock.over){ if (over) buzz(6); setS({ dock:Object.assign({}, S.dock, { over:over }) }); }
+    if (over !== G.over){ if (over) buzz(6); G.over = over; marcarDock(over); }
   }
 }
 function onUp(){
   if (!G){ endGesture(); return; }
-  const mode = G.mode, key = G.key, r = G.r;
-  const sw = S.swipe, dg = S.drag, dk = S.dock;
+  const mode = G.mode, key = G.key, r = G.r, el = G.el, dx = G.dx || 0, over = G.over;
   clearTimeout(lpT); detach(); G = null;
-  if (mode === 'swipe' && sw){
-    const dir = sw.dx > 80 ? 1 : sw.dx < -80 ? -1 : 0;
-    setS({ swipe:null });
+  if (mode === 'swipe'){
+    const dir = dx > 80 ? 1 : dx < -80 ? -1 : 0;
+    pintarDeslizamiento(el, 0);        /* vuelve a su sitio con su propia curva */
     if (dir){ buzz(10); shift(key, dir, r); }
-  } else if (mode === 'drag' && dg){
+  } else if (mode === 'drag'){
     setS({ drag:null });
-    if (dg.over && dg.over !== parseKey(key).status) move(key, dg.over, r);
-  } else if (mode === 'dock' && dk){
+    if (over && over !== parseKey(key).status) move(key, over, r);
+  } else if (mode === 'dock'){
     setS({ dock:null });
-    if (dk.over && dk.over !== parseKey(key).status){ buzz(10); move(key, dk.over, r); }
+    if (over && over !== parseKey(key).status){ buzz(10); move(key, over, r); }
   } else {
     endGesture();
     if (!moved) openDetail(key);

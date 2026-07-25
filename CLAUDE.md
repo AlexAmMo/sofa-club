@@ -42,6 +42,15 @@ node test-app.js
 - Los saneadores del navegador (`okColor`, `okEmoji`, `okImgPath`, `safeItem`) son la última frontera
   antes del DOM: los textos de TMDB los editan terceros. `leerCacheDe()` también sanea, porque la
   copia local es texto de `localStorage` y acaba en el DOM.
+- **Se pinta por zonas y cada una compara su HTML antes de tocar el DOM.** No vuelvas a un
+  `innerHTML` del documento entero: las animaciones CSS se reproducen en cada repintado y eso es un
+  parpadeo constante. Los envoltorios `.rgn` llevan `display:contents` porque la cabecera es
+  `sticky`; si generan caja, deja de pegarse.
+- **Las hojas se abren con `abrirHoja()`, nunca con `setS({sheet:…})`.** Cada hoja es una entrada del
+  historial, y ahí es donde vive la verdad sobre cuántas hay abiertas: por eso el botón atrás del
+  móvil cierra la hoja en vez de salirse de la app. Abrirla a mano descuadra el historial.
+- **Los gestos escriben estilos, no estado.** Un `setS` por `pointermove` reconstruía el documento
+  sesenta veces por segundo. Lo que pinta un gesto se pierde al repintar esa zona, y así debe ser.
 - **El estado es de cada club, no de cada persona**, y no debe volverse global: con la regla del
   colapso, mover una tarjeta mueve a todos los que van en ella, así que un estado global dejaría a
   un club moviendo el tablero de otro. Todo lo que cruza clubes (estante, perfil preseleccionado,

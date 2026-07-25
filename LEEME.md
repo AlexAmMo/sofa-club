@@ -175,7 +175,7 @@ De regalo, el `git log` del repo es el historial de vuestros clubes.
 
 ```bash
 node test-worker.mjs    # 44 · identidad, aislamiento entre clubes, secretos, buscador
-node test-app.js        # 40 · saneado antes del DOM, claves, copias locales, perfil, episodios
+node test-app.js        # 45 · saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
 ```
 
 `test-worker.mjs` levanta un GitHub y un TMDB de mentira en memoria y comprueba lo prometido: que
