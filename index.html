@@ -1,0 +1,2323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sofa Club</title>
+<!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
+     hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hkhUyebE6ywt4zp5OD6twrO7RHRuAEJ/bAQWFpn0i4c='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#0A0910">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='8' width='44' height='44' rx='22' fill='%23FF4FA3'/%3E%3Ccircle cx='18' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='32' cy='52' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='46' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Cellipse cx='25' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3Cellipse cx='39' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-title" content="Sofa Club">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230A0910'/%3E%3Crect x='10' y='8' width='44' height='44' rx='22' fill='%23FF4FA3'/%3E%3Ccircle cx='18' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='32' cy='52' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='46' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Cellipse cx='25' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3Cellipse cx='39' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
+<style>
+/* ═══════════ TOKENS ═══════════ */
+:root{
+  --bg:#171425; --surface:#221D33; --surface-2:#2C2542; --text:#F2EDFF; --text-dim:#A79DC4;
+  --wish:#FFE08A; --watching:#FF8FD0; --done:#7EF0D2; --dropped:#B79CFF;
+  --spring:cubic-bezier(.34,1.56,.64,1); --ink:#1B1626; --bad:#FF6B8A;
+}
+[data-theme="cielo"]{ --bg:#101527; --surface:#1A2038; --surface-2:#242C48; --text:#EAF0FF; --text-dim:#94A3C4;
+  --wish:#A8C7FF; --watching:#C9B0FF; --done:#9BE7C4; --dropped:#F0A8C0; }
+[data-theme="ciruela"]{ --bg:#221820; --surface:#2E2129; --surface-2:#3A2A34; --text:#FFF1E8; --text-dim:#C4A79B;
+  --wish:#FFC49B; --watching:#FF9A8B; --done:#A8D5B0; --dropped:#D9B8A0; }
+[data-theme="neon"]{ --bg:#0A0910; --surface:#14121F; --surface-2:#1E1B2E; --text:#FFFFFF; --text-dim:#8B85A8;
+  --wish:#FFD84D; --watching:#FF4FA3; --done:#3DF5D0; --dropped:#8B5CF6; }
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg)}
+body{font-family:Nunito,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;text-align:inherit}
+input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--wish);outline-offset:3px;border-radius:8px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#ffffff1f;border-radius:999px;border:3px solid transparent;background-clip:content-box}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+/* ═══════════ ÁTOMOS ═══════════ */
+.b{background:var(--surface);border-radius:20px;padding:15px}
+.lbl{font-size:11.5px;font-weight:800;color:var(--text-dim)}
+.lbl-u{font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:.6px;text-transform:uppercase}
+.dim{color:var(--text-dim)}
+.face{font-family:ui-monospace,monospace}
+.pretty{text-wrap:pretty}
+.r44{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;flex:none}
+.pill{height:44px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:800;
+  display:flex;align-items:center;gap:8px;background:#ffffff0d;color:var(--text-dim)}
+.pill.on{background:color-mix(in oklab,var(--c) 20%,transparent);color:var(--c);
+  box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--c) 50%,transparent)}
+.av{border-radius:999px;display:grid;place-items:center;flex:none;
+  background:color-mix(in oklab,var(--c) 70%,transparent);width:26px;height:26px;font-size:13px}
+.av.s34{width:34px;height:34px;font-size:17px}
+.av.s30{width:30px;height:30px;font-size:15px}
+.av.s38{width:38px;height:38px;font-size:19px}
+.av.s52{width:52px;height:52px;font-size:26px}
+.bar{height:7px;border-radius:999px;background:#ffffff14;margin-top:6px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:999px;background:var(--c);transition:width .3s var(--spring)}
+.bar.sm{height:5px;margin-top:4px}
+.inp{height:52px;border-radius:999px;background:#ffffff0f;border:0;outline:none;padding:0 16px;
+  font-size:15.5px;font-weight:700;width:100%;min-width:0}
+.cta{width:100%;height:52px;border-radius:999px;background:var(--watching);color:var(--ink);
+  font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s ease}
+.clubc{width:100%;background:var(--surface);border-radius:22px;padding:13px 14px;display:flex;
+  align-items:center;gap:12px;text-align:left}
+.clubc.on{background:color-mix(in oklab,var(--c) 11%,var(--surface));
+  box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--c) 42%,transparent)}
+.stack{display:flex;flex:none}
+.stack>span{margin-left:-9px;box-shadow:0 0 0 2.5px var(--surface-2)}
+.stack>span:first-child{margin-left:0}
+/* pista de otro club: información que sólo tiene este móvil, dicha bajito */
+.xclub{display:flex;align-items:flex-start;gap:9px;background:#ffffff0a;border-radius:16px;
+  padding:10px 12px;font-size:12.5px;font-weight:700;color:var(--text-dim);line-height:1.45;text-wrap:pretty}
+.xclub b{font-weight:800;color:var(--text)}
+
+/* ═══════════ CABECERA ═══════════ */
+header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 84%,transparent);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:calc(10px + env(safe-area-inset-top)) 14px 6px}
+.hrow{display:flex;align-items:center;gap:12px;max-width:1500px;margin:0 auto}
+.htitle{font-weight:800;font-size:19px;line-height:1.15;letter-spacing:-.2px}
+.hsync{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-dim);line-height:1.3;position:relative;min-width:0}
+/* pase lo que pase con el texto, esta línea no se parte en dos: recorta */
+.hsync span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hsync::after{content:'';position:absolute;left:0;right:0;top:-13px;bottom:-13px}
+.hsync i{width:7px;height:7px;border-radius:999px;background:var(--c);flex:none;display:block}
+.hline{display:flex;align-items:center;gap:9px;min-width:0}
+.hclub{display:flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;flex:none;
+  font-size:12px;font-weight:800;color:var(--watching);position:relative;
+  background:color-mix(in oklab,var(--watching) 15%,transparent)}
+.hclub::after{content:'';position:absolute;left:0;right:0;top:-10px;bottom:-10px}
+.hclub b{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}
+.dsearch{display:flex;align-items:center;gap:6px;background:#ffffff0f;border-radius:999px;height:44px;padding:0 4px 0 14px;width:250px}
+.dsearch input{flex:1;min-width:0;height:44px;background:none;border:0;outline:none;font-size:13.5px;font-weight:600}
+.icobtn{width:44px;height:44px;border-radius:999px;background:#ffffff10;display:grid;place-items:center;font-size:17px;flex:none}
+.tabs{display:flex;gap:4px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:82px;height:50px;padding:0 6px;border-radius:16px 16px 0 0;background:transparent;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-bottom:3px solid transparent;color:var(--text-dim)}
+.tab.on{background:color-mix(in oklab,var(--c) 12%,var(--surface));border-bottom-color:var(--c);color:var(--c)}
+.tab b{font-size:11.5px;font-weight:800;white-space:nowrap}
+.chips{max-width:1500px;margin:9px auto 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+/* ═══════════ TABLERO ═══════════ */
+.board{display:grid;gap:14px;padding:4px 14px 130px;align-items:start;max-width:1500px;margin:0 auto;touch-action:pan-y}
+.cards{display:flex;flex-direction:column;gap:12px}
+.colhead{display:flex;align-items:center;gap:8px;padding:8px 6px 12px}
+.colhead b{font-weight:800;font-size:15px;color:var(--c);letter-spacing:-.1px}
+.colhead u{font-size:12.5px;font-weight:800;color:var(--c);text-decoration:none;
+  background:color-mix(in oklab,var(--c) 14%,transparent);border-radius:999px;padding:2px 8px}
+.dropline{height:4px;border-radius:999px;background:var(--c);box-shadow:0 0 14px var(--c)}
+@media (min-width:900px){
+  .board{grid-template-columns:repeat(3,minmax(230px,1fr)) 74px;padding:10px 22px 160px;gap:18px}
+  .board[data-dropped="open"]{grid-template-columns:repeat(4,minmax(230px,1fr))}
+  .col[data-collapsed="true"] .cards{display:none}
+  .col[data-collapsed="true"] .colhead{writing-mode:vertical-rl;height:230px;padding:14px 0;justify-content:flex-start;cursor:pointer}
+  .col[data-collapsed="true"] .colhead u{writing-mode:horizontal-tb}
+  .col[data-key="dropped"] .colhead{cursor:pointer}
+  .mob{display:none!important}
+}
+@media (max-width:899px){
+  .col[data-active="false"]{display:none}
+  .colhead{display:none}
+  .desk{display:none!important}
+}
+
+/* ═══════════ TARJETA ═══════════ */
+.cw{position:relative}
+.swipe{position:absolute;inset:0;border-radius:20px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;font-size:24px}
+.card{position:relative;background:color-mix(in oklab,var(--c) 7%,var(--surface));border-radius:20px;padding:12px;
+  box-shadow:0 8px 24px -16px #000c;touch-action:pan-y;will-change:transform;
+  transition:transform .22s var(--spring),opacity .18s ease}
+.card.glow{box-shadow:0 0 0 1.5px color-mix(in oklab,var(--c) 60%,transparent),0 10px 30px -14px color-mix(in oklab,var(--c) 50%,transparent)}
+.card.ghost{opacity:.22;box-shadow:none}
+.ctop{display:flex;gap:12px;align-items:flex-start}
+.post{width:56px;height:84px;border-radius:12px;flex:none;background-color:#0003;background-size:cover;background-position:center}
+.post.ink{display:grid;place-items:center;font-weight:800;font-size:22px;
+  background:color-mix(in oklab,var(--c) 18%,transparent);color:var(--c)}
+.ctitle{font-weight:800;font-size:15.5px;line-height:1.2;text-wrap:pretty}
+.corig{font-size:11.5px;color:var(--text-dim);margin-top:1px;font-style:italic}
+.cmeta{font-size:12px;color:var(--text-dim);margin-top:3px;font-weight:600}
+.crow{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.stack{display:flex}
+.stack>*+*{margin-left:-8px}
+.stack .av,.stack .more{box-shadow:0 0 0 2px color-mix(in oklab,var(--c) 7%,var(--surface))}
+.more{height:26px;min-width:26px;padding:0 5px;border-radius:999px;background:var(--surface-2);
+  display:grid;place-items:center;font-size:11.5px;font-weight:800;color:var(--text-dim)}
+.prop{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);font-weight:600}
+.ncount{margin-left:auto;height:26px;padding:0 9px;border-radius:999px;background:#ffffff0f;
+  font-size:11.5px;font-weight:800;color:var(--text-dim);display:flex;align-items:center;gap:4px}
+.hype{display:flex;align-items:center;gap:7px;border-radius:999px;padding:5px 10px 5px 11px;background:#ffffff0d}
+.hype.hot{background:color-mix(in oklab,var(--c) 20%,transparent)}
+.hype b{font-size:11.5px;font-weight:800;color:var(--c)}
+.hdot{width:9px;height:9px;border-radius:999px;background:#ffffff20}
+.hdot.on{background:var(--c)}
+.prov{height:24px;display:flex;align-items:center;gap:5px;padding:0 9px 0 3px;border-radius:999px;background:#ffffff0f}
+.prov i{width:18px;height:18px;border-radius:6px;background-size:cover;display:block;background-color:#ffffff14}
+.prov span{font-size:10.5px;font-weight:800;color:var(--text-dim)}
+.epline{display:flex;align-items:center;gap:11px;margin-top:12px}
+.epmark{font-weight:800;font-size:17px;color:var(--c);letter-spacing:-.3px}
+.epcount{font-size:11.5px;color:var(--text-dim);font-weight:700}
+.minus{background:#ffffff12;font-size:20px;font-weight:800}
+.plus{background:var(--c);color:var(--ink);font-size:21px;font-weight:800;
+  box-shadow:0 8px 20px -12px var(--c)}
+.plus.off{background:#ffffff12;color:var(--text);box-shadow:none}
+.rows{display:flex;flex-direction:column;gap:7px;margin-top:11px;padding-top:10px;box-shadow:inset 0 1px 0 #ffffff12}
+.prow{display:flex;align-items:center;gap:9px}
+.prow b{font-weight:800;font-size:13px}
+.prow em{font-size:10.5px;color:var(--text-dim);font-weight:700;font-style:normal}
+.wide{width:100%;margin-top:11px;height:44px;border-radius:14px;background:#ffffff0d;
+  display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:13.5px;font-weight:800;color:var(--c)}
+.seen{width:100%;margin-top:11px;height:46px;border-radius:14px;background:var(--c);color:var(--ink);
+  font-size:14.5px;font-weight:800;display:grid;place-items:center}
+.rated{display:flex;align-items:center;gap:12px;margin-top:11px}
+.ravg{font-weight:800;font-size:28px;line-height:1;color:var(--c);letter-spacing:-1px}
+.rstars{font-size:13px;color:var(--c);letter-spacing:1px}
+.rchip{display:flex;align-items:center;gap:3px;height:22px;padding:0 7px 0 3px;border-radius:999px;
+  background:#ffffff0f;font-size:10.5px;font-weight:800;color:var(--text-dim)}
+.rchip .av{width:17px;height:17px;font-size:10px}
+.mood{margin-top:9px;font-size:12px;font-weight:700;border-radius:12px;padding:7px 11px;
+  color:var(--c);background:color-mix(in oklab,var(--c) 16%,transparent)}
+.elsew{margin-top:9px;font-size:12px;color:var(--text-dim);font-weight:600;display:flex;gap:6px;align-items:flex-start}
+.empty{display:flex;flex-direction:column;align-items:center;gap:9px;padding:30px 18px;border-radius:20px;
+  background:color-mix(in oklab,var(--c) 5%,var(--surface));text-align:center}
+.empty p{font-size:13.5px;font-weight:700;color:var(--text-dim);max-width:230px;margin:0;text-wrap:pretty}
+
+/* ═══════════ NAV / FLOTANTES ═══════════ */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;gap:4px;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:color-mix(in oklab,var(--surface-2) 94%,transparent);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 -14px 34px -18px #000c}
+nav button{flex:1;height:56px;border-radius:18px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;color:var(--text-dim)}
+nav button i{font-size:19px;line-height:1;font-weight:800;font-style:normal}
+nav button b{font-size:10.5px;font-weight:800}
+nav button.on{background:color-mix(in oklab,var(--watching) 14%,transparent);color:var(--watching)}
+nav button.pri{flex:1.25;background:var(--watching);color:var(--ink);box-shadow:0 10px 26px -12px var(--watching)}
+nav button.pri i{font-size:25px}
+.fab{position:fixed;right:26px;bottom:26px;z-index:40;height:58px;padding:0 24px;border-radius:999px;
+  background:var(--watching);color:var(--ink);font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:10px;
+  box-shadow:0 14px 34px -10px var(--watching),0 4px 12px #0006}
+.ghostcard{position:fixed;z-index:60;pointer-events:none;transform:rotate(2deg) scale(1.03);
+  border-radius:20px;padding:12px;background:color-mix(in oklab,var(--c) 12%,var(--surface));
+  box-shadow:0 30px 60px -18px #000c,0 0 0 1px #ffffff1a}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:70;padding:16px 14px calc(20px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top,var(--surface-2),color-mix(in oklab,var(--surface-2) 0%,transparent));pointer-events:none}
+.dock>p{font-size:12.5px;font-weight:800;color:var(--text-dim);text-align:center;margin:0 0 10px}
+.dock>div{display:flex;gap:8px}
+.dockt{flex:1;height:86px;border-radius:20px;background:#ffffff12;color:var(--text-dim);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  transform:scale(1);transition:transform .16s var(--spring)}
+.dockt i{font-size:22px;font-style:normal;transition:font-size .16s var(--spring)}
+.dockt b{font-size:10.5px;font-weight:800}
+.dockt.over{background:color-mix(in oklab,var(--c) 30%,transparent);color:var(--c);transform:scale(1.1)}
+.dockt.over i{font-size:28px}
+.toast{position:fixed;left:14px;right:14px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:120;
+  display:flex;justify-content:center;pointer-events:none}
+.toast>div{pointer-events:auto;max-width:520px;width:100%;background:var(--surface-2);border-radius:18px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 22px 50px -18px #000c}
+.toast span{font-size:13.5px;font-weight:700;flex:1;text-wrap:pretty}
+.toast button{flex:none;height:38px;padding:0 15px;border-radius:999px;background:var(--wish);
+  color:#2A2016;font-weight:800;font-size:13.5px}
+.conf{position:fixed;z-index:80;pointer-events:none}
+
+/* ═══════════ HOJAS ═══════════ */
+.ov{position:fixed;inset:0;z-index:100;background:#0A0812b8;backdrop-filter:blur(3px);
+  display:flex;align-items:flex-end;justify-content:center;padding:0;animation:fadeIn .18s ease both}
+.sheet{background:var(--surface-2);width:100%;max-width:100%;max-height:92vh;border-radius:28px 28px 0 0;
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -20px 60px -20px #000e;
+  animation:sheetUp .24s var(--spring) both}
+.handle{flex:none;padding:10px 0 6px;display:grid;place-items:center;cursor:grab;touch-action:none}
+.handle i{width:44px;height:5px;border-radius:999px;background:#ffffff2b;display:block}
+.scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:6px 18px calc(24px + env(safe-area-inset-bottom))}
+@media (min-width:900px){
+  .ov{align-items:center;padding:28px}
+  .sheet{max-width:620px;max-height:88vh;border-radius:28px}
+}
+.stitle{font-weight:800;font-size:20px;letter-spacing:-.3px}
+.ssub{font-size:13px;color:var(--text-dim);font-weight:600;margin-top:4px;text-wrap:pretty}
+.dposter{width:104px;height:156px;border-radius:16px;flex:none;background-color:#0003;
+  background-size:cover;background-position:center;box-shadow:0 14px 30px -14px #000b}
+.dposter.ink{display:grid;place-items:center;font-weight:800;font-size:38px;
+  background:color-mix(in oklab,var(--c) 18%,transparent);color:var(--c);box-shadow:none}
+.dtitle{font-weight:800;font-size:22px;line-height:1.12;letter-spacing:-.4px;text-wrap:pretty}
+.gchip{height:26px;padding:0 11px;border-radius:999px;background:#ffffff0f;font-size:11.5px;
+  font-weight:800;color:var(--text-dim);display:grid;place-items:center}
+.pchip{height:28px;display:flex;align-items:center;gap:6px;padding:0 11px 0 4px;border-radius:999px;background:#ffffff12}
+.pchip i{width:20px;height:20px;border-radius:7px;background-size:cover;display:block;background-color:#ffffff14}
+.pchip span{font-size:11.5px;font-weight:800}
+.prow2{background:var(--surface);border-radius:18px;padding:11px 12px}
+.prow2.me{background:color-mix(in oklab,var(--c) 9%,var(--surface))}
+.big{flex:1;min-width:170px;height:48px;border-radius:999px;background:#ffffff12;font-size:13.5px;
+  font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px}
+.note{display:flex;gap:9px;align-items:flex-start}
+.note>div{flex:1;min-width:0;background:var(--surface);border-radius:16px;padding:9px 12px}
+.res{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:18px;padding:10px;width:100%}
+.res.have{background:color-mix(in oklab,var(--wish) 8%,var(--surface))}
+.res i{width:44px;height:66px;border-radius:10px;flex:none;background-color:#0003;background-size:cover;background-position:center;display:block}
+.cue{flex:none;font-size:13px;font-weight:800;height:34px;padding:0 13px;border-radius:999px;
+  display:grid;place-items:center;background:#ffffff10;color:var(--text-dim)}
+.cue.join{background:color-mix(in oklab,var(--wish) 24%,transparent);color:var(--wish)}
+.spin{width:170px;height:255px;border-radius:20px;background-color:#0004;background-size:cover;
+  background-position:center;box-shadow:0 24px 50px -18px #000c;animation:spinPulse .22s ease-in-out infinite alternate}
+.rposter{width:190px;height:285px;border-radius:22px;background-color:#0004;background-size:cover;
+  background-position:center;box-shadow:0 26px 54px -18px #000c}
+.stat{background:var(--surface);border-radius:20px;padding:14px}
+.stat b{font-weight:800;font-size:30px;letter-spacing:-1px;color:var(--c);margin-top:4px;line-height:1;display:block}
+.stat p{font-size:12px;color:var(--text-dim);font-weight:600;margin:5px 0 0;text-wrap:pretty}
+.srow{display:flex;align-items:center;gap:10px}
+.srow>b{width:100px;flex:none;font-size:12.5px;font-weight:800;display:flex;align-items:center;gap:6px;overflow:hidden}
+.srow>i{flex:1;min-width:0;height:10px;border-radius:999px;background:#ffffff14;overflow:hidden;display:block}
+.srow>i>u{display:block;height:100%;border-radius:999px;background:var(--c)}
+.srow>em{flex:none;font-size:12px;font-weight:800;color:var(--text-dim);min-width:44px;text-align:right;font-style:normal}
+.themeb{min-width:0;height:68px;border-radius:18px;display:flex;flex-direction:column;justify-content:center;
+  gap:8px;padding:0 14px;box-shadow:inset 0 0 0 1px #ffffff1a}
+.themeb.on{box-shadow:0 0 0 2.5px var(--c)}
+.footbar{position:sticky;bottom:-6px;background:var(--surface-2);display:flex;gap:8px;margin-top:22px;
+  padding:14px 0 6px;box-shadow:0 -16px 22px -6px var(--surface-2)}
+.banner{margin:0 14px 8px;background:color-mix(in oklab,var(--wish) 14%,var(--surface));border-radius:16px;
+  padding:11px 14px;font-size:12.5px;font-weight:700;color:var(--wish);text-wrap:pretty}
+
+/* ═══════════ MOVIMIENTO ═══════════ */
+@keyframes cardIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+@keyframes land{0%{transform:scale(1.06) rotate(-1deg)}60%{transform:scale(.98)}100%{transform:scale(1)}}
+@keyframes splitA{0%{transform:translateX(0) scale(1.03);box-shadow:0 0 0 3px #ffffff30}55%{transform:translateX(6px) scale(.985)}100%{transform:translateX(0) scale(1)}}
+@keyframes joinA{0%{transform:scale(.9);opacity:.4}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1)}}
+@keyframes sheetUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes shimmer{0%{background-position:-220px 0}100%{background-position:280px 0}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes confetti{0%{opacity:1;transform:translate(0,0) scale(.6) rotate(0)}
+  100%{opacity:0;transform:translate(var(--cx),var(--cy)) scale(1.15) rotate(var(--cr))}}
+@keyframes starPop{0%{transform:scale(.4)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes spinPulse{0%{transform:scale(.94) rotate(-2deg)}100%{transform:scale(1) rotate(2deg)}}
+[data-anim="in"]{animation:cardIn .22s var(--spring)}
+[data-anim="land"]{animation:land .3s var(--spring) both}
+[data-anim="split"]{animation:splitA .34s var(--spring) both}
+[data-anim="join"]{animation:joinA .32s var(--spring) both}
+.float{animation:floatY 3.4s ease-in-out infinite}
+.skel{background:linear-gradient(100deg,#ffffff00 12%,#ffffff14 32%,#ffffff00 52%) var(--surface);
+  background-size:420px 100%;animation:shimmer 1.15s linear infinite;border-radius:20px;
+  box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c) 13%,transparent)}
+.pop{animation:starPop .26s var(--spring) both}
+.fade{animation:fadeIn .18s ease both}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="sr" aria-live="polite" id="live"></div>
+<div id="app"></div>
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════════════════
+   API REAL — sustituye a mock-api.js del handoff.
+   Implementa el contrato de §2.2. Fuera de este bloque no hay ni un fetch ni
+   un localStorage. Persistencia: data.json en un repo de GitHub vía Contents
+   API. Catálogo: TMDB. Claves: link mágico → localStorage.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const LS = { cfg:'sc.cfg', theme:'sc.theme', perfil:'sc.me', cache:'sc.cache.' };
+const iso = (d) => new Date(d == null ? Date.now() : d).toISOString();
+const uid = (p) => p + Math.random().toString(36).slice(2, 9);
+const nowIso = () => new Date().toISOString();
+
+/* ── configuración ────────────────────────────────────────────────────────────
+   El navegador ya no guarda ningún token de GitHub ni de TMDB. Sólo guarda tu
+   secreto personal, que únicamente sirve para hablar con el Worker y que lleva
+   dentro a qué grupo perteneces. El enlace trae «#s=» si ya eres del grupo o
+   «#i=» si te acaban de invitar (de un solo uso).
+
+   Se admiten varios secretos a la vez: así puedes estar en el tablero de la
+   pareja y en el de los amigos desde el mismo móvil. Ojo con lo que esto NO es:
+   no hay cuenta ni identidad común. En cada club eres una persona distinta con
+   su propia clave, y el servidor no sabe que sois la misma. Quien sí lo sabe es
+   este dispositivo, y por eso todo lo que cruza clubes — el perfil que se
+   preselecciona, las pistas de «esto ya lo tienes en el otro» — se calcula aquí
+   y no sale de aquí.                                                           */
+const WORKER_URL = 'https://sofa-club.mysofaclub.workers.dev';   /* ← edítalo una vez */
+const CLAVE_OK = /^[a-z0-9][a-z0-9-]{1,30}\.[a-z0-9]{16,64}$/;
+const grupoDe = (s) => (CLAVE_OK.test(String(s || '')) ? String(s).split('.')[0] : null);
+
+function readConfig(){
+  let cfg = { secrets: [], active: null, invite: null };
+  try {
+    const g = JSON.parse(localStorage.getItem(LS.cfg) || '{}');
+    if (Array.isArray(g.secrets)) cfg.secrets = g.secrets.filter((s) => CLAVE_OK.test(s));
+    if (CLAVE_OK.test(g.active)) cfg.active = g.active;
+  } catch(e){}
+  const h = location.hash.slice(1);
+  if (h){
+    const p = new URLSearchParams(h);
+    const s = p.get('s'), i = p.get('i');
+    if (s && CLAVE_OK.test(s)) añadirSecreto(cfg, s);
+    if (i && CLAVE_OK.test(i)) cfg.invite = i;          /* no se guarda: se consume al entrar */
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  if (!cfg.active || cfg.secrets.indexOf(cfg.active) < 0) cfg.active = cfg.secrets[0] || null;
+  return cfg;
+}
+function añadirSecreto(cfg, s){
+  const g = grupoDe(s);
+  cfg.secrets = cfg.secrets.filter((x) => grupoDe(x) !== g).concat([s]);
+  cfg.active = s;
+  saveConfig(cfg);
+}
+/* salir de un club en ESTE dispositivo: se va la clave y se va su copia local.
+   No echa a nadie de ningún sitio ni borra nada del club; simplemente este
+   móvil deja de tener llave, y para volver hará falta otra invitación.         */
+function quitarSecreto(cfg, s){
+  const g = grupoDe(s);
+  cfg.secrets = cfg.secrets.filter((x) => x !== s);
+  if (cfg.active === s) cfg.active = cfg.secrets[0] || null;
+  if (g && !cfg.secrets.some((x) => grupoDe(x) === g)) borrarCacheDe(g);
+  saveConfig(cfg);
+}
+function saveConfig(cfg){
+  try { localStorage.setItem(LS.cfg, JSON.stringify({ secrets: cfg.secrets, active: cfg.active })); } catch(e){}
+}
+function olvidarTodo(cfg){
+  try {
+    localStorage.removeItem(LS.cfg);
+    localStorage.removeItem(LS.perfil);
+    ((cfg && cfg.secrets) || []).forEach((s) => borrarCacheDe(grupoDe(s)));
+  } catch(e){}
+}
+
+/* ── la copia local, una por club ────────────────────────────────────────────
+   Antes había una sola ranura y cambiar de club dejaba el tablero en blanco
+   hasta que contestaba el Worker. Con una copia por club el cambio es
+   instantáneo, y de paso el dispositivo puede mirar de reojo lo que tienes en
+   los otros sin pedir permiso a nadie ni hacer una sola petición.              */
+const claveCache = (g) => LS.cache + g;
+function guardarCacheDe(g, state){
+  if (!g) return;
+  try { localStorage.setItem(claveCache(g), JSON.stringify(state)); } catch(e){}
+}
+function borrarCacheDe(g){
+  if (!g) return;
+  try { localStorage.removeItem(claveCache(g)); } catch(e){}
+}
+/* se sanea al leer: esto es texto guardado en el navegador y acaba en el DOM */
+function leerCacheDe(g){
+  if (!g) return null;
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(claveCache(g)) || 'null'); } catch(e){}
+  if (!raw || !raw.me) return null;
+  const v = publicView(raw, raw.me);
+  if (!v.me) return null;
+  v.group = g;
+  return v;
+}
+
+/* ── el perfil de este dispositivo ───────────────────────────────────────────
+   No es una cuenta: es un recuerdo. Sirve para no volver a teclear tu nombre y
+   tu bicho cada vez que entras en un club nuevo. Sigues siendo una persona
+   distinta en cada club, con su propia clave y su propio identificador.        */
+function leerPerfil(){
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(LS.perfil) || 'null'); } catch(e){}
+  if (!p || !String(p.name || '').trim()) return null;
+  return { name: okStr(p.name, 40), emoji: okEmoji(p.emoji), color: okColor(p.color) };
+}
+function guardarPerfil(p){
+  if (!p || !String(p.name || '').trim()) return;
+  try { localStorage.setItem(LS.perfil, JSON.stringify({ name: okStr(p.name, 40), emoji: okEmoji(p.emoji), color: okColor(p.color) })); } catch(e){}
+}
+
+/* ── saneado en la frontera ──────────────────────────────────────────────────
+   Todo lo que sale del Api pasa por aquí. data.json lo puede escribir cualquiera
+   con el enlace, y los títulos vienen de TMDB, que es contenido editado por
+   terceros: ninguno de los dos es de fiar para meterlo en el DOM tal cual.      */
+const ID_OK = /^[A-Za-z0-9_-]{1,64}$/;
+const okId = (s) => ID_OK.test(String(s || '')) ? String(s) : null;
+const okColor = (c) => /^#[0-9a-fA-F]{3,8}$/.test(String(c || '')) ? String(c) : '#8B85A8';
+const okEmoji = (e) => (String(e == null ? '' : e).replace(/[^\p{Extended_Pictographic}\p{L}\p{N}]/gu, '').slice(0, 4) || '👤');
+const okNum = (n) => (typeof n === 'number' && isFinite(n)) ? n : (isFinite(+n) && n !== null && n !== '' ? +n : null);
+const okStr = (s, max) => String(s == null ? '' : s).slice(0, max || 400);
+/* sólo carátulas de TMDB (o el SVG del modo demo). Cualquier otra cosa, fuera. */
+const okImgPath = (p) => {
+  const s = String(p || '');
+  if (/^\/[A-Za-z0-9._-]{1,120}$/.test(s)) return s;               // ruta TMDB
+  if (/^data:image\/svg\+xml,[A-Za-z0-9%._~()'!*:@,;+$-]*$/.test(s)) return s; // demo
+  return null;
+};
+function safeUser(u){
+  const id = okId(u.id); if (!id) return null;
+  return { id: id, name: okStr(u.name, 40) || '¿?', emoji: okEmoji(u.emoji), color: okColor(u.color),
+    joinedAt: u.joinedAt, active: u.active !== false };
+}
+function safeItem(i){
+  const id = okId(i.id); if (!id) return null;
+  const parts = {};
+  Object.keys(i.participants || {}).forEach((k) => {
+    const uidOk = okId(k); if (!uidOk) return;
+    const p = i.participants[k];
+    if (!p || ['wish','watching','done','dropped'].indexOf(p.status) < 0) return;
+    parts[uidOk] = {
+      status: p.status, order: okNum(p.order) || 0,
+      progress: p.progress && okNum(p.progress.s) != null && okNum(p.progress.e) != null ? { s:+p.progress.s, e:+p.progress.e } : null,
+      hype: clampN(okNum(p.hype), 1, 3, 2), rating: p.rating == null ? null : clampN(okNum(p.rating), 1, 5, null),
+      startedAt: p.startedAt || null, finishedAt: p.finishedAt || null, updatedAt: p.updatedAt || null,
+    };
+  });
+  if (!Object.keys(parts).length) return null;
+  const seasons = Array.isArray(i.seasons)
+    ? i.seasons.map((s) => ({ number: okNum(s.number) || 0, episodes: okNum(s.episodes) || 0 })).filter((s) => s.number > 0)
+    : null;
+  return {
+    id: id, tmdbId: okNum(i.tmdbId), type: i.type === 'movie' ? 'movie' : 'tv',
+    title: okStr(i.title, 160) || 'Sin título', originalTitle: okStr(i.originalTitle, 160),
+    year: okNum(i.year), poster: okImgPath(i.poster),
+    genres: (Array.isArray(i.genres) ? i.genres : []).slice(0, 8).map((g) => okStr(g, 40)),
+    overview: okStr(i.overview, 1200), runtime: okNum(i.runtime) || 0,
+    seasons: seasons && seasons.length ? seasons : null,
+    totalEpisodes: okNum(i.totalEpisodes),
+    providers: (Array.isArray(i.providers) ? i.providers : []).slice(0, 6)
+      .map((p) => ({ name: okStr(p.name, 40), logo: okImgPath(p.logo) })).filter((p) => p.name),
+    providersCheckedAt: i.providersCheckedAt || null,
+    addedBy: okId(i.addedBy) || '', addedAt: i.addedAt || null,
+    participants: parts,
+    notes: (Array.isArray(i.notes) ? i.notes : []).filter((n) => n && !n.deletedAt && okId(n.id))
+      .slice(0, 200).map((n) => ({ id: okId(n.id), by: okId(n.by) || '', text: okStr(n.text, 600), at: n.at || null })),
+    updatedAt: i.updatedAt || null,
+  };
+}
+function clampN(v, a, b, dflt){ return (v == null || !isFinite(v)) ? dflt : Math.max(a, Math.min(b, v)); }
+
+/* vista pública: sin lápidas y saneada */
+function publicView(raw, me){
+  return {
+    me: okId(me),
+    users: (raw.users || []).filter((u) => !u.deletedAt).map(safeUser).filter(Boolean),
+    items: (raw.items || []).filter((i) => !i.deletedAt).map(safeItem).filter(Boolean),
+  };
+}
+/* ── cliente de GitHub: data.json vía Contents API (envía CORS, sin proxy) ── */
+const IMG = { sm: 'w185', md: 'w342', lg: 'w500' };
+
+/* ── espejo local de las operaciones ──────────────────────────────────────────
+   Sirve para dos cosas: el modo demo, y pintar el cambio al instante mientras
+   el Worker confirma. No es una comprobación de seguridad — el Worker vuelve a
+   validarlo todo y su respuesta manda —, así que puede ser simple.            */
+function aplicarLocal(st, op, a, me){
+  const it = (id) => st.items.find((x) => x.id === id);
+  const orden = (status) => {
+    let max = 0;
+    st.items.forEach((i) => Object.values(i.participants).forEach((p) => { if (p.status === status) max = Math.max(max, p.order || 0); }));
+    return max + 1024;
+  };
+  const parte = (status, o) => ({ status, order: o.order, progress: o.progress || null, hype: o.hype != null ? o.hype : 2,
+    rating: null, startedAt: status === 'wish' ? null : nowIso(),
+    finishedAt: (status === 'done' || status === 'dropped') ? nowIso() : null, updatedAt: nowIso() });
+  const sellar = (x, u) => { if (x.participants[u]) x.participants[u].updatedAt = nowIso(); x.updatedAt = nowIso(); };
+  const x = a.id ? it(a.id) : null;
+
+  if (op === 'addItem'){
+    let y = st.items.find((i) => i.tmdbId === a.tmdbId);
+    if (!y){
+      y = Object.assign({ id: uid('itm_'), tmdbId: a.tmdbId, type: a.type, title: a.title || 'Cargando…',
+        originalTitle: a.originalTitle || '', year: a.year || null, poster: a.poster || null, genres: [], overview: '',
+        runtime: 0, seasons: null, totalEpisodes: null, providers: [], addedBy: me, addedAt: nowIso(),
+        participants: {}, notes: [], updatedAt: nowIso() });
+      st.items = [y].concat(st.items);
+    }
+    if (!y.participants[me]) y.participants[me] = parte(a.status || 'wish', { order: orden(a.status || 'wish'), hype: a.hype });
+    return;
+  }
+  if (!x && op !== 'updateProfile' && op !== 'removeUser') return;
+  if (op === 'removeItem') st.items = st.items.filter((i) => i.id !== a.id);
+  else if (op === 'setStatus'){
+    const o = orden(a.status);
+    (a.userIds || []).forEach((u) => {
+      const p = x.participants[u]; if (!p) return;
+      p.status = a.status; p.order = o;
+      if (a.status === 'watching' && x.type === 'tv' && !p.progress) p.progress = { s: 1, e: 0 };
+      if (a.status === 'wish'){ p.progress = null; p.rating = null; p.finishedAt = null; }
+      if (a.status === 'done' || a.status === 'dropped') p.finishedAt = nowIso();
+      if (a.status === 'watching'){ p.startedAt = p.startedAt || nowIso(); p.finishedAt = null; }
+      sellar(x, u);
+    });
+  }
+  else if (op === 'setProgress') (a.userIds || []).forEach((u) => { const p = x.participants[u]; if (p){ p.progress = { s: a.progress.s, e: a.progress.e }; sellar(x, u); } });
+  else if (op === 'splitOut'){ const p = x.participants[me]; if (p){ p.order = orden(p.status); sellar(x, me); } }
+  else if (op === 'joinUsers'){
+    const t = x.participants[a.target]; if (!t) return;
+    x.participants[me] = Object.assign({}, x.participants[me] || parte(t.status, { order: t.order }),
+      { status: t.status, order: t.order, progress: t.progress ? Object.assign({}, t.progress) : null });
+    sellar(x, me);
+  }
+  else if (op === 'setHype'){ const p = x.participants[me]; if (p){ p.hype = a.value; sellar(x, me); } }
+  else if (op === 'setRating'){ const p = x.participants[me]; if (p){ p.rating = a.value; sellar(x, me); } }
+  else if (op === 'addNote'){ x.notes = x.notes.concat([{ id: uid('n_'), by: me, text: a.text, at: nowIso() }]); x.updatedAt = nowIso(); }
+  else if (op === 'removeNote'){ x.notes = x.notes.filter((n) => n.id !== a.noteId || n.by !== me); x.updatedAt = nowIso(); }
+  else if (op === 'updateProfile') st.users = st.users.map((u) => u.id === me ? Object.assign({}, u, { name: a.name, emoji: a.emoji, color: a.color }) : u);
+  else if (op === 'removeUser'){
+    st.users = st.users.filter((u) => u.id !== a.userId);
+    st.items.forEach((i) => { delete i.participants[a.userId]; });
+    st.items = st.items.filter((i) => Object.keys(i.participants).length);
+  }
+}
+
+/* lo que llega del Worker se vuelve a sanear aquí: los nombres, las notas y
+   los textos de TMDB los escriben personas, y esta es la última frontera antes
+   del DOM. */
+const sanear = (st) => Object.assign(publicView(st || {}, st && st.me), { group: st && st.group, owner: st && st.owner });
+
+/* ── el Api: hacia fuera, el mismo contrato de siempre ────────────────────── */
+function createApi(cfg){
+  const demo = !cfg.active || /TU-SUBDOMINIO/.test(WORKER_URL);
+  let state = { me: null, users: [], items: [] };
+  let sync = { state: 'idle', pending: 0 };
+  const subs = new Set();
+  const cola = [];
+  let enviando = false, sinClave = false, ultimoError = null;
+  const catalogo = {};
+
+  const emit = () => { const s = state; subs.forEach((f) => { try { f(s); } catch(e){ console.error(e); } }); };
+  const setSync = (st, n) => { sync = { state: st, pending: n == null ? cola.length : n }; emit(); };
+  const guardarCache = () => { if (!demo) guardarCacheDe(grupoDe(cfg.active), state); };
+
+  async function llamar(ruta, opciones){
+    const r = await fetch(WORKER_URL + ruta, Object.assign({
+      headers: Object.assign({ 'Content-Type': 'application/json' }, cfg.active ? { Authorization: 'Bearer ' + cfg.active } : {}),
+    }, opciones || {}));
+    let cuerpo = null;
+    try { cuerpo = await r.json(); } catch(e){}
+    if (!r.ok){
+      const err = new Error((cuerpo && cuerpo.error) || ('http-' + r.status));
+      err.code = (cuerpo && cuerpo.error) || 'http'; err.status = r.status;
+      throw err;
+    }
+    return cuerpo;
+  }
+
+  /* las operaciones se encolan y salen en orden; así el servidor nunca recibe
+     dos cambios cruzados y el reintento es trivial */
+  function encolar(op, args, opciones){
+    if (demo){ aplicarLocal(state, op, args, state.me); state = Object.assign({}, state, { items: state.items.slice() }); emit(); return Promise.resolve({}); }
+    aplicarLocal(state, op, args, state.me);
+    state = Object.assign({}, state, { items: state.items.slice() });
+    guardarCache(); emit();
+    return new Promise((resolve, reject) => {
+      const previo = (opciones && opciones.fusionar) ? cola.find((c) => c.op === op && c.clave === opciones.fusionar && !c.enviada) : null;
+      if (previo){ previo.args = args; previo.resolves.push(resolve); previo.rejects.push(reject); }
+      else cola.push({ op, args, clave: opciones && opciones.fusionar, enviada: false, resolves: [resolve], rejects: [reject] });
+      setSync('saving');
+      clearTimeout(encolar._t);
+      encolar._t = setTimeout(vaciar, (opciones && opciones.esperar) || 120);
+    });
+  }
+  async function vaciar(){
+    if (enviando || !cola.length || sinClave) return;
+    if (!navigator.onLine){ setSync('offline'); return; }
+    enviando = true;
+    while (cola.length){
+      const c = cola[0];
+      c.enviada = true;
+      try {
+        const r = await llamar('/api/op', { method: 'POST', body: JSON.stringify({ op: c.op, args: c.args }) });
+        state = sanear(r.state); guardarCache();
+        cola.shift(); c.resolves.forEach((f) => f(r));
+      } catch(e){
+        c.enviada = false;
+        if (e.code === 'sin-clave'){ sinClave = true; setSync('error'); enviando = false; emit(); return; }
+        if (!navigator.onLine || e.status === undefined){ setSync('offline'); enviando = false; return; }
+        ultimoError = e;
+        setSync('error');
+        cola.shift(); c.rejects.forEach((f) => f(e));
+      }
+    }
+    enviando = false;
+    ultimoError = null;
+    setSync('idle', 0);
+  }
+  async function refrescar(){
+    if (demo || sinClave || cola.length) return;
+    try { const r = await llamar('/api/session', { method: 'POST' }); state = sanear(r.state); guardarCache(); setSync('idle', 0); }
+    catch(e){ if (e.code === 'sin-clave'){ sinClave = true; setSync('error'); } else if (!navigator.onLine) setSync('offline'); }
+  }
+
+  const Api = {
+    getState: () => state,
+    subscribe(fn){ subs.add(fn); return () => subs.delete(fn); },
+    getSyncStatus: () => sync,
+    imageUrl(path, size){
+      if (!path) return null;
+      if (/^data:/.test(path)) return path;
+      if (!/^\/[A-Za-z0-9._-]{1,120}$/.test(path)) return null;
+      return 'https://image.tmdb.org/t/p/' + (IMG[size || 'md']) + path;
+    },
+
+    async searchTitles(query, opts){
+      if (demo){
+        const q = (query || '').toLowerCase();
+        return state.items.filter((i) => i.title.toLowerCase().includes(q))
+          .map((i) => ({ tmdbId: i.tmdbId, type: i.type, title: i.title, originalTitle: i.originalTitle, year: i.year, poster: i.poster }));
+      }
+      const r = await fetch(WORKER_URL + '/api/search?q=' + encodeURIComponent(query),
+        { headers: { Authorization: 'Bearer ' + cfg.active }, signal: opts && opts.signal });
+      if (!r.ok) throw new Error('busqueda');
+      const j = await r.json();
+      (j.results || []).forEach((x) => { catalogo[x.tmdbId] = x; });
+      return j.results || [];
+    },
+
+    addItem(o){
+      const semilla = catalogo[o.tmdbId] || {};
+      return encolar('addItem', { tmdbId: o.tmdbId, type: o.type, status: o.status, hype: o.hype,
+        title: semilla.title, originalTitle: semilla.originalTitle, year: semilla.year, poster: semilla.poster });
+    },
+    removeItem(id){ return encolar('removeItem', { id }); },
+    setStatus(id, userIds, status){ return encolar('setStatus', { id, userIds, status }); },
+    /* el progreso es un valor absoluto, así que varios toques seguidos se funden
+       en uno solo: ni te hace esperar ni genera un commit por episodio */
+    setProgress(id, userIds, p){ return encolar('setProgress', { id, userIds, progress: p }, { fusionar: 'p:' + id, esperar: 700 }); },
+    splitOut(id){ return encolar('splitOut', { id }); },
+    joinUsers(id, _me, target){ return encolar('joinUsers', { id, target }); },
+    setHype(id, _u, value){ return encolar('setHype', { id, value }, { fusionar: 'h:' + id, esperar: 400 }); },
+    setRating(id, _u, value){ return encolar('setRating', { id, value }, { fusionar: 'r:' + id, esperar: 400 }); },
+    addNote(id, text){ return encolar('addNote', { id, text }); },
+    removeNote(id, noteId){ return encolar('removeNote', { id, noteId }); },
+    updateProfile(p){
+      if (demo && !state.me){
+        const id = uid('u_');
+        state = Object.assign({}, state, { me: id, users: state.users.concat([{ id, name: p.name, emoji: p.emoji, color: p.color, joinedAt: nowIso(), active: true }]) });
+        emit(); return Promise.resolve(id);
+      }
+      guardarPerfil(p);            /* para no volver a teclearlo en el próximo club */
+      return encolar('updateProfile', { name: p.name, emoji: p.emoji, color: p.color });
+    },
+    removeUser(userId){ return encolar('removeUser', { userId }); },
+    async createInvite(){
+      if (demo) return location.href;
+      const r = await llamar('/api/op', { method: 'POST', body: JSON.stringify({ op: 'createInvite', args: {} }) });
+      state = sanear(r.state); emit();
+      return r.url;
+    },
+
+    /* estado para la interfaz */
+    isDemo: () => demo,
+    isClassic: () => false,
+    hasTmdb: () => !demo,
+    authFailed: () => sinClave,
+    repoName: () => grupoDe(cfg.active),
+
+    /* los clubes de este dispositivo. Nada de esto viaja: son las claves que
+       hay guardadas aquí y la copia local de cada tablero.                    */
+    grupos: () => cfg.secrets.map((s) => ({ secret: s, group: grupoDe(s), activo: s === cfg.active })),
+    estadoDeClub: (g) => (g && g === grupoDe(cfg.active) ? state : leerCacheDe(g)),
+    perfilDelDispositivo: () => leerPerfil(),
+    cambiarGrupo(secret){ if (secret === cfg.active) return; cfg.active = secret; saveConfig(cfg); location.reload(); },
+    salirDeClub(secret){ quitarSecreto(cfg, secret); location.reload(); },
+    olvidarDispositivo(){ olvidarTodo(cfg); location.reload(); },
+    retry(){ sinClave = false; ultimoError = null; if (cola.length) vaciar(); else refrescar(); },
+    ultimoFallo: () => ultimoError,
+
+    async boot(){
+      if (demo){ const raw = demoSeed(); state = sanear({ me: raw.users[0].id, users: raw.users, items: raw.items }); emit(); return; }
+      const c = leerCacheDe(grupoDe(cfg.active));            /* pinta ya, sin esperar al Worker */
+      if (c){ state = c; emit(); }
+      if (cfg.invite){
+        emit();          /* la pantalla de bienvenida se encarga: llamará a unirse() */
+        return;
+      }
+      await refrescar();
+    },
+    /* alta con invitación de un solo uso: el Worker devuelve TU secreto */
+    async unirse(perfil){
+      const r = await llamar('/api/join', { method: 'POST', body: JSON.stringify({ invite: cfg.invite, name: perfil.name, emoji: perfil.emoji, color: perfil.color }) });
+      añadirSecreto(cfg, r.secret);
+      guardarPerfil(perfil);
+      cfg.invite = null;
+      state = sanear(r.state); guardarCache(); setSync('idle', 0);
+      return r;
+    },
+    hayInvitacion: () => !!cfg.invite,
+  };
+
+  window.addEventListener('online', () => { if (cola.length) vaciar(); else refrescar(); });
+  window.addEventListener('offline', () => setSync('offline'));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (cola.length) vaciar(); else refrescar(); } });
+  setInterval(() => { if (!document.hidden) refrescar(); }, 60000);
+  return Api;
+}
+
+/* ── modo demo: sin claves, el tablero se abre igual con datos de ejemplo ── */
+function demoPoster(title, hue){
+  const ini = title.replace(/^(el|la|los|las|un|una)\s+/i, '').slice(0, 2).toUpperCase();
+  const s = "<svg xmlns='http://www.w3.org/2000/svg' width='132' height='198' viewBox='0 0 132 198'>"
+    + "<defs><pattern id='s' width='12' height='12' patternTransform='rotate(35)' patternUnits='userSpaceOnUse'>"
+    + "<rect width='12' height='12' fill='hsl(" + hue + " 34% 22%)'/><rect width='6' height='12' fill='hsl(" + hue + " 38% 27%)'/></pattern></defs>"
+    + "<rect width='132' height='198' fill='url(%23s)'/><circle cx='66' cy='86' r='34' fill='hsl(" + hue + " 42% 16%)' opacity='.85'/>"
+    + "<text x='66' y='98' font-family='Nunito,sans-serif' font-size='30' font-weight='800' fill='hsl(" + hue + " 70% 82%)' text-anchor='middle'>" + ini + "</text></svg>";
+  return 'data:image/svg+xml,' + encodeURIComponent(s).replace(/\(/g, '%28').replace(/\)/g, '%29');
+}
+function demoSeed(){
+  const U = ['u_demo1', 'u_demo2', 'u_demo3'];
+  const users = [
+    { id: U[0], name: 'Tú', emoji: '🐻', color: '#FF8FD0', joinedAt: iso('2026-01-04'), active: true, updatedAt: iso('2026-01-04') },
+    { id: U[1], name: 'Nuria', emoji: '🐰', color: '#FFE08A', joinedAt: iso('2026-01-04'), active: true, updatedAt: iso('2026-01-04') },
+    { id: U[2], name: 'Bruno', emoji: '🦊', color: '#7EF0D2', joinedAt: iso('2026-02-17'), active: true, updatedAt: iso('2026-02-17') },
+  ];
+  let n = 0;
+  const P = (status, order, o) => Object.assign({ status, order, progress: null, hype: 2, rating: null,
+    startedAt: status === 'wish' ? null : iso('2026-05-12'), finishedAt: (status === 'done' || status === 'dropped') ? iso('2026-07-05') : null,
+    updatedAt: iso('2026-07-19') }, o || {});
+  const mk = (tmdbId, type, title, orig, year, genres, runtime, seasons, provs, overview, parts, notes, noPoster) => {
+    const ss = seasons ? seasons.map((e, i) => ({ number: i + 1, episodes: e })) : null;
+    return {
+      id: 'itm_d' + (++n), tmdbId, type, title, originalTitle: orig, year, genres, overview, runtime,
+      poster: noPoster ? null : demoPoster(title, (tmdbId * 37) % 360),
+      seasons: ss, totalEpisodes: ss ? ss.reduce((a, s) => a + s.episodes, 0) : null,
+      providers: (provs || []).map((p) => ({ name: p, logo: null })),
+      providersCheckedAt: nowIso(), addedBy: parts.__by || U[0], addedAt: iso('2026-06-01'),
+      participants: (delete parts.__by, parts), notes: notes || [], updatedAt: iso('2026-07-20'), deletedAt: null,
+    };
+  };
+  const items = [
+    mk(95396, 'tv', 'Separación', 'Severance', 2022, ['Drama', 'Ciencia ficción'], 47, [9, 10], ['Apple TV+'],
+      'Cuatro empleados de Lumon tienen la memoria dividida entre el trabajo y la vida personal. Cuando aparece un compañero desaparecido, todo empieza a agrietarse.',
+      { __by: U[1], [U[0]]: P('watching', 2048, { progress: { s: 2, e: 5 }, hype: 3 }), [U[1]]: P('watching', 2048, { progress: { s: 2, e: 5 }, hype: 3 }), [U[2]]: P('done', 1024, { rating: 5, hype: 3 }) },
+      [{ id: 'n1', by: U[2], text: 'no me digáis nada del final de la 1 que os veo', at: iso('2026-07-02') },
+       { id: 'n2', by: U[0], text: 'el pasillo. sólo digo eso. el pasillo', at: iso('2026-07-14') }]),
+    mk(136315, 'tv', 'Oso', 'The Bear', 2022, ['Comedia', 'Drama'], 30, [8, 10, 10], ['Disney+'],
+      'Un chef de alta cocina hereda el bar de bocadillos de su hermano en Chicago y arrastra consigo todo lo que no ha llorado todavía.',
+      { [U[0]]: P('watching', 3072, { progress: { s: 2, e: 3 } }), [U[1]]: P('watching', 3072, { progress: { s: 1, e: 8 } }), [U[2]]: P('watching', 3072, { progress: { s: 3, e: 1 }, hype: 3 }) },
+      [{ id: 'n3', by: U[1], text: 'aviso: el capítulo de la familia da ansiedad de verdad', at: iso('2026-06-28') }]),
+    mk(94605, 'tv', 'Arcane', 'Arcane', 2021, ['Animación', 'Acción'], 40, [9, 9], ['Netflix'],
+      'Dos hermanas crecen en dos ciudades que se odian, y la magia que las separa está a punto de estallar.',
+      { __by: U[2], [U[0]]: P('done', 3072, { rating: 5 }), [U[1]]: P('done', 3072, { rating: 4 }), [U[2]]: P('dropped', 1024, { rating: 1, progress: { s: 1, e: 2 } }) },
+      [{ id: 'n5', by: U[2], text: 'me rendí en el 2, no me entra la animación', at: iso('2026-04-11') }]),
+    mk(94997, 'tv', 'La casa del dragón', 'House of the Dragon', 2022, ['Drama', 'Fantasía'], 60, [10, 8], ['HBO Max'],
+      'Doscientos años antes de la caída de su casa, los Targaryen discuten quién hereda un trono que nadie va a soltar por las buenas.',
+      { [U[0]]: P('wish', 4096, { hype: 3 }), [U[1]]: P('wish', 4096, { hype: 3 }), [U[2]]: P('wish', 4096, { hype: 3 }) }),
+    mk(545611, 'movie', 'Todo a la vez en todas partes', 'Everything Everywhere All at Once', 2022, ['Aventura', 'Comedia'], 139, null, ['Movistar Plus+'],
+      'Una señora de una lavandería tiene que salvar el multiverso entre dos declaraciones de Hacienda.',
+      { __by: U[1], [U[0]]: P('done', 4096, { rating: 5 }), [U[1]]: P('done', 4096, { rating: 5 }), [U[2]]: P('done', 4096, { rating: 2 }) },
+      [{ id: 'n7', by: U[2], text: 'a mí me pareció un ruido enorme, lo siento', at: iso('2026-03-02') }]),
+    mk(106379, 'tv', 'Fallout', 'Fallout', 2024, ['Ciencia ficción'], 60, [8], ['Prime Video'],
+      'Doscientos años después de las bombas, una chica sale de su refugio y descubre que la superficie tiene mucho sentido del humor.',
+      { [U[0]]: P('watching', 9216, { progress: { s: 1, e: 7 } }), [U[1]]: P('watching', 9216, { progress: { s: 1, e: 7 } }) }),
+    mk(815266, 'movie', 'Aftersun', 'Aftersun', 2022, ['Drama'], 102, null, ['Filmin', 'Movistar Plus+'],
+      'Una mujer recuerda las vacaciones en Turquía con su padre, veinte años después, y lo que entonces no supo ver.',
+      { [U[0]]: P('wish', 6144, { hype: 3 }), [U[1]]: P('wish', 6144, { hype: 2 }) }),
+    mk(915935, 'movie', 'Anatomía de una caída', "Anatomie d'une chute", 2023, ['Drama', 'Suspense'], 151, null, ['Filmin'],
+      'Un hombre aparece muerto bajo la ventana de su casa en los Alpes y su mujer se sienta en un juicio que es una autopsia del matrimonio.',
+      { __by: U[2], [U[2]]: P('wish', 7168, { hype: 3 }), [U[0]]: P('wish', 7168, { hype: 3 }) }, null, true),
+    mk(976893, 'movie', 'Perfect Days', 'Perfect Days', 2023, ['Drama'], 124, null, [],
+      'Un hombre limpia baños públicos en Tokio, escucha casetes y mira las hojas de los árboles. No hace falta más.',
+      { [U[0]]: P('watching', 7168, { hype: 2 }) }),
+    mk(87108, 'tv', 'Chernobyl', 'Chernobyl', 2019, ['Drama', 'Historia'], 65, [5], ['HBO Max'],
+      'La crónica minuciosa de lo que pasa cuando el coste de las mentiras se cobra en personas.',
+      { __by: U[2], [U[0]]: P('wish', 10240, { hype: 2 }), [U[2]]: P('done', 8192, { rating: 5 }) }),
+    mk(546554, 'movie', 'Puñales por la espalda', 'Knives Out', 2019, ['Comedia', 'Misterio'], 130, null, ['Movistar Plus+'],
+      'Muere un escritor millonario y un detective con acento imposible interroga a una familia que miente fatal.',
+      { __by: U[1], [U[1]]: P('dropped', 3072, { rating: 2 }) }),
+  ];
+  return { version: 2, users, items };
+}
+/* ══════════════════════════════════════════════════════════════════════════
+   INTERFAZ — port del prototipo de diseño. Sólo habla con Api.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const COLS = [
+  { key:'wish',     label:'Nos apetece', emoji:'💭', v:'var(--wish)' },
+  { key:'watching', label:'Viendo',      emoji:'👀', v:'var(--watching)' },
+  { key:'done',     label:'Terminado',   emoji:'✅', v:'var(--done)' },
+  { key:'dropped',  label:'Dejada',      emoji:'😴', v:'var(--dropped)' },
+];
+const CK = COLS.map((c) => c.key);
+const COL = (k) => COLS.find((c) => c.key === k) || COLS[0];
+const soft = (v, p) => 'color-mix(in oklab,' + v + ' ' + p + '%,transparent)';
+const tint = (v, p) => 'color-mix(in oklab,' + v + ' ' + p + '%,var(--surface))';
+const THEMES = [
+  { key:'malva',   label:'Noche malva',        bg:'#171425', fg:'#F2EDFF', dots:['#FFE08A','#FF8FD0','#7EF0D2','#B79CFF'] },
+  { key:'cielo',   label:'Cielo nocturno',     bg:'#101527', fg:'#EAF0FF', dots:['#A8C7FF','#C9B0FF','#9BE7C4','#F0A8C0'] },
+  { key:'ciruela', label:'Ciruela y melocotón',bg:'#221820', fg:'#FFF1E8', dots:['#FFC49B','#FF9A8B','#A8D5B0','#D9B8A0'] },
+  { key:'neon',    label:'Neón de medianoche', bg:'#0A0910', fg:'#FFFFFF', dots:['#FFD84D','#FF4FA3','#3DF5D0','#8B5CF6'] },
+];
+const EMOJIS = ['🐻','🐰','🦊','🐼','🐨','🐯','🦁','🐸','🐙','🐧','🐣','🦉','🐳','🦄','🐝','🐞','🦋','🐢','🦕','🐬','🍄','🌙','⭐','🍓','🍊','🌵','🧁','🍿','👻','🤖','🐲','🦭'];
+const PALETTE = ['#FF8FD0','#FFE08A','#7EF0D2','#B79CFF','#FFA98C','#9BE7C4','#A8C7FF','#FF4FA3','#FFD84D','#C9B0FF'];
+const EMPTY = {
+  wish:['no tenéis nada pendiente','(・_・;)','¿en serio?'],
+  watching:['no estáis viendo nada ahora mismo','( ˘ω˘ )','buen momento para empezar algo'],
+  done:['aún no habéis acabado nada juntos','(๑>ᴗ<๑)','todo por delante'],
+  dropped:['nadie ha abandonado nada','(๑•̀ㅂ•́)و','qué constancia'],
+};
+const F0 = { type:null, provs:[], by:[], who:[], avail:false, hypeUser:null, hypeMin:3 };
+
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+const norm = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const STARS = (n) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+const nfmt = (n) => (Math.round(n * 10) / 10).toString().replace('.', ',');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+const ago = (at) => {
+  const d = (Date.now() - new Date(at)) / 86400000;
+  if (d < 0.04) return 'ahora mismo';
+  if (d < 1) return 'hace ' + Math.max(1, Math.round(d * 24)) + ' h';
+  if (d < 30) return 'hace ' + Math.round(d) + ' días';
+  return new Date(at).toLocaleDateString('es-ES', { month:'long', year:'numeric' });
+};
+const since = (at) => 'desde ' + new Date(at).toLocaleDateString('es-ES', { month:'long', year:'numeric' });
+
+let Api = null;
+const S = {
+  data:null, sync:{state:'idle',pending:0}, booting:true,
+  isMobile: window.innerWidth < 900,
+  tab:'watching', collapsed:true, theme:'neon',
+  q:'', f:Object.assign({}, F0), fd:null,
+  drag:null, swipe:null, dock:null, anim:{}, confetti:[],
+  sheet:null, sheetDy:0, toast:null, pendingDel:null,
+  noteDraft:'', addQ:'', addResults:null, addSearching:false, addPick:null,
+  roul:null, statScope:'me', statYear:'all',
+  prof:null, profRec:false, invite:null, confirmAsk:null,
+  saveState:'idle', inviteState:'idle', copyState:'idle', pop:null,
+};
+const setS = (p) => { Object.assign(S, p); render(); };
+
+const meId = () => S.data && S.data.me;
+const user = (id) => (S.data && S.data.users.find((u) => u.id === id)) || { id:id, name:'¿?', emoji:'👤', color:'#888' };
+const findItem = (id) => S.data && S.data.items.find((i) => i.id === id);
+const parseKey = (k) => { const a = (k || '').split('|'); return { itemId:a[0], status:a[1], order:+a[2] }; };
+const groupUsers = (it, status, order) => Object.keys(it.participants)
+  .filter((u) => it.participants[u].status === status && it.participants[u].order === order);
+/* ── lo que este móvil sabe de ti en tus OTROS clubes ────────────────────────
+   Aquí está la parte buena de un «estado global» sin ninguna de sus pegas: no
+   hay petición detrás, sale de la copia local de cada club. Nadie de un club ve
+   nada de otro, el servidor no relaciona tus identidades y tu estado sigue
+   siendo de cada tablero. La relación la pone el dispositivo, que es el único
+   que tiene derecho a ponerla.
+   Se calcula una vez: cambiar de club recarga la página.                      */
+let otrosIdx = null;
+function otrosClubes(tmdbId){
+  if (!tmdbId || !Api.grupos) return [];
+  if (!otrosIdx){
+    otrosIdx = {};
+    Api.grupos().forEach((g) => {
+      if (g.activo) return;
+      const st = Api.estadoDeClub(g.group);
+      if (!st || !st.me) return;
+      st.items.forEach((i) => {
+        const p = i.participants[st.me];
+        if (!p || !i.tmdbId) return;
+        (otrosIdx[i.tmdbId] = otrosIdx[i.tmdbId] || []).push({ group:g.group, p:p });
+      });
+    });
+  }
+  return otrosIdx[tmdbId] || [];
+}
+function fraseOtroClub(x){
+  const c = COL(x.p.status);
+  let t = 'en «' + x.group + '» la tienes en ' + c.emoji + ' ' + c.label.toLowerCase();
+  if (x.p.status === 'watching' && x.p.progress) t += ', por la T' + x.p.progress.s + ' E' + x.p.progress.e;
+  if (x.p.rating) t += ', con ' + STARS(x.p.rating);
+  return t;
+}
+function absEp(it, pr){
+  if (!pr || !it.seasons) return 0;
+  let n = 0; it.seasons.forEach((s) => { if (s.number < pr.s) n += s.episodes; });
+  return n + pr.e;
+}
+function step(it, pr, dir){
+  const ss = it.seasons || [];
+  let s = pr ? pr.s : 1, e = pr ? pr.e : 0;
+  const len = (n) => (ss.find((x) => x.number === n) || { episodes:0 }).episodes;
+  if (dir > 0){ e += 1; if (e > len(s)){ if (s >= ss.length) return 'end'; s += 1; e = 1; } }
+  else { e -= 1; if (e < 0){ if (s <= 1) return { s:1, e:0 }; s -= 1; e = len(s); } }
+  return { s:s, e:e };
+}
+function matches(it, uid_, f){
+  if (S.q){
+    const q = norm(S.q);
+    if (!norm(it.title).includes(q) && !norm(it.originalTitle).includes(q)) return false;
+  }
+  if (f.type && it.type !== f.type) return false;
+  if (f.provs.length && !it.providers.some((p) => f.provs.includes(p.name))) return false;
+  if (f.avail && !it.providers.length) return false;
+  if (f.by.length && !f.by.includes(it.addedBy)) return false;
+  if (f.who.length && !f.who.includes(uid_)) return false;
+  if (f.hypeUser){
+    const ok = (u) => { const p = it.participants[u]; return !!p && p.status === 'wish' && p.hype >= f.hypeMin; };
+    if (f.hypeUser === 'any'){ if (!ok(uid_)) return false; }
+    else if (!ok(f.hypeUser) || it.participants[uid_].status !== 'wish') return false;
+  }
+  return true;
+}
+const hasF = (f) => { const g = f || S.f; return !!(S.q || g.type || g.provs.length || g.by.length || g.who.length || g.avail || g.hypeUser); };
+const countTitles = (f) => S.data.items.filter((i) => Object.keys(i.participants).some((u) => matches(i, u, f))).length;
+
+/* avisos */
+let toastT = null;
+function say(msg){ const el = document.getElementById('live'); if (el) el.textContent = msg; }
+function toast(text, label, action){
+  clearTimeout(toastT);
+  setS({ toast:{ text:text, label:label, action:action } });
+  toastT = setTimeout(() => setS({ toast:null }), label ? 6200 : 3600);
+  say(text);
+}
+async function call(fn, ok){
+  try { const r = await fn(); if (ok) say(ok); return r; }
+  catch(e){
+    if (e && e.code === 'no-tmdb') toast('falta la clave de TMDB, no puedo buscar títulos');
+    else toast('no he podido guardarlo (・_・;)', 'reintentar', () => call(fn, ok));
+    return null;
+  }
+}
+function flash(keys, kind){
+  const anim = Object.assign({}, S.anim);
+  keys.forEach((k) => { anim[k] = kind; });
+  setS({ anim:anim });
+  setTimeout(() => { const a = Object.assign({}, S.anim); keys.forEach((k) => { if (a[k] === kind) delete a[k]; }); setS({ anim:a }); }, 380);
+}
+function rain(rect){
+  const chars = ['💗','⭐','✨','💛','🩷','🌟'];
+  const parts = Array.from({ length:16 }, (_, i) => ({
+    x: Math.round(rect.left + rect.width * (0.15 + Math.random() * 0.7)),
+    y: Math.round(rect.top + rect.height * 0.4),
+    ch: chars[i % chars.length], size: Math.round(13 + Math.random() * 14),
+    dx: Math.round((Math.random() - 0.5) * 220), dy: Math.round(-70 - Math.random() * 160),
+    rot: Math.round((Math.random() - 0.5) * 220), dur: (0.7 + Math.random() * 0.25).toFixed(2),
+  }));
+  setS({ confetti:parts });
+  setTimeout(() => setS({ confetti:[] }), 1000);
+}
+/* ── mascota ── */
+function mascot(size, fill, eye, op){
+  const o = op || 1, e = eye || '#20182B';
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 64 64" aria-hidden="true">'
+    + '<rect x="10" y="8" width="44" height="44" rx="22" fill="' + fill + '" opacity="' + o + '"/>'
+    + '<circle cx="18" cy="50" r="7.4" fill="' + fill + '" opacity="' + o + '"/><circle cx="32" cy="52" r="7.4" fill="' + fill + '" opacity="' + o + '"/><circle cx="46" cy="50" r="7.4" fill="' + fill + '" opacity="' + o + '"/>'
+    + '<ellipse cx="25" cy="28" rx="3.2" ry="4" fill="' + e + '"/><ellipse cx="39" cy="28" rx="3.2" ry="4" fill="' + e + '"/>'
+    + '<circle cx="18.5" cy="35" r="3.4" fill="' + e + '" opacity=".16"/><circle cx="45.5" cy="35" r="3.4" fill="' + e + '" opacity=".16"/>'
+    + '<path d="M29 36q3 3 6 0" stroke="' + e + '" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>';
+}
+const avatar = (u, cls) => '<span class="av ' + (cls || '') + '" style="--c:' + u.color + '" title="' + esc(u.name) + '">' + u.emoji + '</span>';
+/* segunda barrera: aunque la ruta ya venga saneada, la URL final se valida otra
+   vez antes de entrar en un atributo style, y se escapa. */
+const bgImg = (url) => {
+  const s = String(url || '');
+  if (!/^https:\/\/image\.tmdb\.org\/t\/p\/[A-Za-z0-9]+\/[A-Za-z0-9._-]+$/.test(s)
+   && !/^data:image\/svg\+xml,[A-Za-z0-9%._~()'!*:@,;+$-]*$/.test(s)) return '';
+  return 'background-image:url(&quot;' + esc(s) + '&quot;)';
+};
+
+/* ── una tarjeta ── */
+function cardHtml(it, status, order, users){
+  const c = COL(status).v;
+  const key = it.id + '|' + status + '|' + order;
+  const sw = S.swipe && S.swipe.key === key ? S.swipe.dx : 0;
+  const isDrag = S.drag && S.drag.key === key;
+  const fi = ['wish','watching','done'].indexOf(status);
+  const nxt = COL(['wish','watching','done'][clamp(fi + 1, 0, 2)]);
+  const prv = COL(['wish','watching','done'][clamp(fi - 1, 0, 2)]);
+  const anim = S.anim[key] || S.anim[it.id + '|' + status] || 'in';
+  const me = meId();
+  const orig = it.originalTitle && norm(it.originalTitle) !== norm(it.title) ? it.originalTitle : null;
+  const meta = (it.type === 'tv' ? '📺' : '🎬') + ' ' + (it.year || '') + (it.totalEpisodes ? ' · ' + it.totalEpisodes + ' ep.' : (it.runtime ? ' · ' + it.runtime + ' min' : ''));
+  const ini = it.title.replace(/^(el|la|los|las)\s+/i, '').slice(0, 2).toUpperCase();
+  const poster = it.poster ? Api.imageUrl(it.poster, 'sm') : null;
+
+  let body = '';
+  let extraCls = '';
+
+  if (status === 'wish'){
+    const hy = users.map((u) => it.participants[u].hype);
+    const avg = hy.reduce((a, b) => a + b, 0) / hy.length;
+    const mine = it.participants[me];
+    if (avg === 3 && users.length > 2) extraCls = ' glow';
+    body += '<div class="crow" style="margin-top:11px">'
+      + '<div class="hype' + (avg >= 3 && users.length > 1 ? ' hot' : '') + '"><b>ganas</b><div style="display:flex;gap:3px">'
+      + [1,2,3].map((n) => '<span class="hdot' + (n <= Math.round(avg) ? ' on' : '') + '"></span>').join('')
+      + '</div>' + (hy.length > 1 ? '<span style="font-size:11px;color:var(--text-dim);font-weight:700">de ' + hy.length + ' personas</span>' : '') + '</div>';
+    if (mine && mine.status === 'wish'){
+      body += '<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px;color:var(--text-dim);font-weight:700">las mías</span>'
+        + [1,2,3].map((n) => '<button class="r44" data-a="hype:' + n + '" style="font-size:17px;background:' + (n <= mine.hype ? soft(c, 22) : '#ffffff0a') + '">' + (n <= mine.hype ? '💗' : '🤍') + '</button>').join('') + '</div>';
+    }
+    if (it.providers.length){
+      body += '<div style="display:flex;gap:5px;margin-left:auto">'
+        + it.providers.slice(0, 2).map((p) => '<span class="prov"><i style="' + bgImg(Api.imageUrl(p.logo, 'sm')) + '"></i><span>' + esc(p.name) + '</span></span>').join('') + '</div>';
+    }
+    body += '</div>';
+  } else if (status === 'watching'){
+    if (it.type === 'movie'){
+      body += '<button class="seen" data-a="seen">ya la hemos visto ✅</button>';
+    } else {
+      const byProg = {};
+      users.forEach((u) => { const p = it.participants[u]; const k = p.progress ? p.progress.s + '-' + p.progress.e : '0'; (byProg[k] = byProg[k] || []).push(u); });
+      const keys = Object.keys(byProg);
+      const total = it.totalEpisodes || 1;
+      const mk = (us) => { const p = it.participants[us[0]]; const n = absEp(it, p.progress);
+        return { label:'T' + (p.progress ? p.progress.s : 1) + ' · E' + (p.progress ? p.progress.e : 0), counter:n + '/' + total, pct:Math.round((n / total) * 100) }; };
+      if (keys.length === 1){
+        const r = mk(users);
+        body += '<div class="epline"><div style="flex:1;min-width:0">'
+          + '<div style="display:flex;align-items:baseline;gap:8px"><span class="epmark">' + r.label + '</span><span class="epcount">' + r.counter + '</span></div>'
+          + '<div class="bar"><i style="width:' + r.pct + '%"></i></div></div>'
+          + '<div style="display:flex;gap:6px;flex:none">'
+          + '<button class="r44 minus" data-a="minus" aria-label="Episodio anterior">−</button>'
+          + '<button class="r44 plus" data-a="plus" aria-label="Siguiente episodio">+</button></div></div>';
+      } else if (keys.length > 3){
+        body += '<button class="wide" data-a="open"><span>' + keys.length + ' ritmos distintos</span><span style="opacity:.7">›</span></button>';
+      } else {
+        body += '<div class="rows">' + keys.sort((a, b) => byProg[b].length - byProg[a].length).map((k) => {
+          const us = byProg[k], uu = user(us[0]), r = mk(us), isMe = us.includes(me);
+          return '<div class="prow">'
+            + '<span class="av" style="--c:' + uu.color + '">' + (us.length > 1 ? us.map((x) => user(x).emoji).join('') : uu.emoji) + '</span>'
+            + '<div style="flex:1;min-width:0"><div style="display:flex;align-items:baseline;gap:7px"><b>' + r.label + '</b><em>' + r.counter + '</em></div>'
+            + '<div class="bar sm" style="--c:' + soft(uu.color, 90) + '"><i style="width:' + r.pct + '%"></i></div></div>'
+            + '<div style="display:flex;gap:5px;flex:none">'
+            + '<button class="r44 minus" data-a="rminus:' + us.join(',') + '" aria-label="Episodio anterior">−</button>'
+            + '<button class="r44 plus' + (isMe ? '' : ' off') + '" data-a="rplus:' + us.join(',') + '" aria-label="Siguiente episodio">+</button></div></div>';
+        }).join('') + '</div>';
+      }
+    }
+  } else {
+    const rs = users.map((u) => ({ u:u, r:it.participants[u].rating })).filter((x) => x.r);
+    if (rs.length){
+      const avg = rs.reduce((a, x) => a + x.r, 0) / rs.length;
+      const spread = Math.max.apply(null, rs.map((x) => x.r)) - Math.min.apply(null, rs.map((x) => x.r));
+      body += '<div class="rated"><div style="display:flex;align-items:baseline;gap:3px">'
+        + '<span class="ravg">' + nfmt(avg) + '</span><span style="font-size:12px;color:var(--text-dim);font-weight:700">/5</span></div>'
+        + '<div style="flex:1;min-width:0"><div class="rstars">' + STARS(Math.round(avg)) + '</div>'
+        + '<div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">'
+        + rs.map((x) => { const uu = user(x.u); return '<span class="rchip"><span class="av" style="--c:' + uu.color + '">' + uu.emoji + '</span>' + x.r + '</span>'; }).join('')
+        + '</div></div></div>';
+      if (spread > 2) body += '<div class="mood" style="--c:var(--wish)">aquí hubo debate 🥊</div>';
+      else if (rs.length > 1 && spread === 0) body += '<div class="mood">todos igual, qué bonito 🫶</div>';
+    } else {
+      body += '<div class="rated"><div style="display:flex;align-items:baseline;gap:3px"><span class="ravg">–</span>'
+        + '<span style="font-size:12px;color:var(--text-dim);font-weight:700">/5</span></div>'
+        + '<div style="flex:1"><div class="rstars" style="color:var(--text-dim)">☆☆☆☆☆</div></div></div>'
+        + '<div class="mood" style="color:var(--text-dim);background:#ffffff0d">sin puntuar todavía</div>';
+    }
+  }
+
+  /* gente en otras columnas */
+  const others = Object.keys(it.participants).filter((u) => !users.includes(u));
+  const bits = [];
+  others.slice(0, 2).forEach((u) => {
+    const p = it.participants[u], uu = user(u);
+    if (p.status === 'done') bits.push(uu.emoji + ' ya la vio' + (p.rating ? ' y le puso ' + STARS(p.rating).replace(/☆/g, '') : ''));
+    else if (p.status === 'dropped') bits.push(uu.emoji + ' la dejó' + (p.progress ? ' en el ' + p.progress.e : ''));
+    else if (p.status === 'watching') bits.push(uu.emoji + ' va por T' + (p.progress ? p.progress.s + ' · E' + p.progress.e : '1'));
+    else bits.push(uu.emoji + ' la quiere ver');
+  });
+  if (bits.length) body += '<div class="elsew"><span style="opacity:.6;flex:none">⤵</span><span class="pretty">'
+    + esc(bits.join(' · ') + (others.length > 2 ? ' · +' + (others.length - 2) : '')) + '</span></div>';
+
+  const showProp = !users.includes(it.addedBy) || users.length > 1;
+  return '<div class="cw">'
+    + (Math.abs(sw) > 4 ? '<div class="swipe" style="background:' + (sw > 0 ? soft(nxt.v, 26) : soft(prv.v, 26)) + '">'
+        + '<span>' + (sw < 0 ? prv.emoji : '') + '</span><span>' + (sw > 0 ? nxt.emoji : '') + '</span></div>' : '')
+    + '<div class="card' + extraCls + (isDrag ? ' ghost' : '') + '" data-card="' + key + '" data-anim="' + anim + '"'
+    + ' style="--c:' + c + ';transform:translateX(' + sw + 'px)' + (sw ? ';transition:none' : '') + '">'
+    + '<div class="ctop">'
+    + (poster ? '<div class="post" role="img" aria-label="' + esc(it.title) + '" style="' + bgImg(poster) + '"></div>'
+              : '<div class="post ink">' + esc(ini) + '</div>')
+    + '<div style="flex:1;min-width:0">'
+    + '<div class="ctitle">' + esc(it.title) + '</div>'
+    + (orig ? '<div class="corig">' + esc(orig) + '</div>' : '')
+    + '<div class="cmeta">' + meta + '</div>'
+    + '<div class="crow"><div class="stack">'
+    + users.slice(0, 4).map((u) => '<span class="av" style="--c:' + user(u).color + '" title="' + esc(user(u).name) + '">' + user(u).emoji + '</span>').join('')
+    + (users.length > 4 ? '<span class="more">+' + (users.length - 4) + '</span>' : '')
+    + '</div>'
+    + (showProp ? '<span class="prop"><span style="opacity:.5">·</span>' + user(it.addedBy).emoji + ' lo propuso</span>' : '')
+    + (it.notes.length ? '<span class="ncount">💬 ' + it.notes.length + '</span>' : '')
+    + '</div></div></div>'
+    + body
+    + '</div></div>';
+}
+
+function buildCards(status){
+  const out = [];
+  S.data.items.forEach((it) => {
+    if (S.pendingDel === it.id) return;
+    const groups = {};
+    Object.keys(it.participants).forEach((u) => {
+      const p = it.participants[u];
+      if (p.status !== status) return;
+      if (!matches(it, u, S.f)) return;
+      (groups[p.order] = groups[p.order] || []).push(u);
+    });
+    Object.keys(groups).sort((a, b) => b - a).forEach((o) => out.push({ it:it, order:+o, users:groups[o] }));
+  });
+  return out;
+}
+function syncLabel(corto){
+  const s = S.sync;
+  if (S.booting) return 'preparando el sofá…';
+  if (Api.isDemo()) return 'modo demo · nada se guarda';
+  if (Api.authFailed()) return 'la clave no vale · toca aquí';
+  if (s.state === 'saving') return 'guardando…';
+  if (s.state === 'offline') return 'sin conexión · ' + s.pending + ' cambio' + (s.pending === 1 ? '' : 's') + ' por subir';
+  if (s.state === 'error') return 'algo falló al guardar · toca aquí';
+  const n = S.data ? S.data.users.length : 0;
+  /* con el chip del club al lado no cabe todo: el recuento se cae, que además
+     lo dice el estante. Lo que nunca se cae es el estado. */
+  if (corto) return 'todo al día';
+  return n + (n === 1 ? ' persona' : ' personas') + ' · todo al día';
+}
+function syncColor(){
+  if (Api.isDemo()) return 'var(--wish)';
+  const s = S.sync.state;
+  return s === 'saving' ? 'var(--wish)' : s === 'offline' ? 'var(--dropped)' : s === 'error' ? 'var(--bad)' : 'var(--done)';
+}
+function activeChips(){
+  const f = S.f, out = [];
+  const add = (a, label, c) => out.push({ a:a, label:label, c:c });
+  if (S.q) add('rm:q', '🔍 «' + S.q + '»', 'var(--text)');
+  if (f.type) add('rm:type', f.type === 'tv' ? '📺 series' : '🎬 pelis', 'var(--watching)');
+  if (f.who.length === 1 && f.who[0] === meId()) add('rm:who:' + meId(), '👤 solo lo mío', 'var(--wish)');
+  else f.who.forEach((u) => add('rm:who:' + u, user(u).emoji + ' ' + user(u).name, user(u).color));
+  if (f.avail) add('rm:avail', '📡 disponible ahora', 'var(--done)');
+  f.provs.forEach((p) => add('rm:prov:' + p, p, 'var(--done)'));
+  if (f.hypeUser) add('rm:hype', '💗'.repeat(f.hypeMin) + (f.hypeUser === 'any' ? ' de quien sea' : ' de ' + user(f.hypeUser).name), 'var(--wish)');
+  f.by.forEach((u) => add('rm:by:' + u, 'lo propuso ' + user(u).emoji, user(u).color));
+  return out;
+}
+
+function headerHtml(){
+  const chips = S.data ? activeChips() : [];
+  /* con un solo club esto no aparece: no hay nada entre lo que elegir */
+  const gs = (Api && Api.grupos) ? Api.grupos() : [];
+  const act = gs.find((g) => g.activo);
+  return '<header>'
+    + '<div class="hrow">'
+    + '<div class="float" style="flex:none">' + mascot(38, 'var(--watching)') + '</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div class="htitle">Sofa Club</div>'
+    + '<div class="hline">'
+    + '<button class="hsync" data-a="sync" style="--c:' + syncColor() + '"><i></i><span>' + esc(syncLabel(gs.length > 1)) + '</span></button>'
+    + (gs.length > 1 && act ? '<button class="hclub" data-a="p.clubs" aria-label="Cambiar de club">🛋️ <b>' + esc(act.group) + '</b><span style="opacity:.65;font-size:9px">▼</span></button>' : '')
+    + '</div></div>'
+    + '<div style="display:flex;align-items:center;gap:6px">'
+    + '<div class="dsearch desk"><span style="font-size:13px;opacity:.7">🔍</span>'
+    + '<input id="qtop" value="' + esc(S.q) + '" data-in="q" aria-label="Buscar en vuestro tablero" placeholder="buscar en vuestro tablero…">'
+    + (S.q ? '<button class="r44" data-a="rm:q" aria-label="Quitar la búsqueda" style="width:36px;height:36px;background:#ffffff14;font-size:12px">✕</button>' : '')
+    + '</div>'
+    + '<button data-a="filters" aria-label="Buscar y filtrar" style="min-width:44px;height:44px;padding:0 14px;border-radius:999px;font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:7px;background:' + (hasF() ? soft('var(--wish)', 22) : '#ffffff10') + ';color:' + (hasF() ? 'var(--wish)' : 'var(--text)') + '">'
+    + '<span class="mob" style="font-size:17px">🔍</span><span class="desk">Filtros</span>'
+    + (chips.length ? '<span style="min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--wish);color:#2A2016;font-size:11.5px;font-weight:800;display:grid;place-items:center">' + chips.length + '</span>' : '')
+    + '</button>'
+    + '<div class="desk" style="display:flex;align-items:center;gap:6px">'
+    + '<button data-a="roulette" style="height:44px;padding:0 16px;border-radius:999px;background:var(--wish);color:#2A2016;font-weight:800;font-size:14.5px;display:flex;align-items:center;gap:7px;box-shadow:0 8px 22px -14px var(--wish)">🎲 <span>¿Qué vemos hoy?</span></button>'
+    + '<button class="icobtn" data-a="stats" aria-label="Estadísticas" title="Estadísticas">📊</button>'
+    + '<button class="icobtn" data-a="settings" aria-label="Ajustes" title="Ajustes">⚙️</button>'
+    + '</div></div></div>'
+    + (chips.length ? '<div class="chips fade"><span style="font-size:11.5px;font-weight:800;color:var(--text-dim);padding-right:2px">filtrando por</span>'
+        + chips.map((c) => '<button class="pill" data-a="' + c.a + '" title="Quitar este filtro" style="background:' + soft(c.c, 18) + ';color:' + c.c + '"><span>' + esc(c.label) + '</span><span style="opacity:.7;font-size:12px">✕</span></button>').join('')
+        + '<button class="pill" data-a="rm:all">limpiar todo</button></div>' : '')
+    + (S.data ? '<div class="tabs mob">' + COLS.map((c) => {
+        const n = buildCards(c.key).length;
+        return '<button class="tab' + (S.tab === c.key ? ' on' : '') + '" data-a="tab:' + c.key + '" style="--c:' + c.v + '">'
+          + '<span style="font-size:15px;line-height:1">' + c.emoji + '</span><b>' + c.label + ' · ' + n + '</b></button>';
+      }).join('') + '</div>' : '')
+    + '</header>';
+}
+
+function bootHtml(){
+  return '<div style="padding:34px 16px 60px;display:flex;flex-direction:column;align-items:center;gap:14px">'
+    + '<div class="float">' + mascot(76, 'var(--surface-2)', 'var(--text-dim)') + '</div>'
+    + '<div style="font-weight:800;font-size:16px">abriendo vuestro tablero…</div>'
+    + '<div style="font-size:13.5px;color:var(--text-dim);margin-top:-8px">un segundito <span class="face">( ˘ω˘ )</span></div>'
+    + '<div style="width:100%;max-width:1500px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-top:10px">'
+    + COLS.map((c) => '<div style="display:flex;flex-direction:column;gap:12px;--c:' + c.v + '">'
+        + '<div style="height:30px;width:60%;border-radius:999px;background:' + c.v + ';opacity:.28"></div>'
+        + ['124px','96px','150px'].map((h) => '<div class="skel" style="height:' + h + '"></div>').join('')
+        + '</div>').join('')
+    + '</div></div>';
+}
+
+function boardHtml(){
+  return '<div class="board" data-board data-dropped="' + (S.collapsed ? 'collapsed' : 'open') + '">'
+    + COLS.map((c) => {
+      const cards = buildCards(c.key);
+      const collapsed = c.key === 'dropped' && S.collapsed;
+      const dragOver = S.drag && S.drag.over === c.key && parseKey(S.drag.key).status !== c.key;
+      return '<section class="col" data-key="' + c.key + '" data-col="' + c.key + '" data-active="' + (S.tab === c.key) + '" data-collapsed="' + collapsed + '" style="--c:' + c.v + ';min-width:0">'
+        + '<div class="colhead" data-a="collapse:' + c.key + '"><span style="font-size:16px">' + c.emoji + '</span><b>' + c.label + '</b><u>' + cards.length + '</u></div>'
+        + '<div class="cards">'
+        + (dragOver ? '<div class="dropline"></div>' : '')
+        + cards.map((g) => cardHtml(g.it, c.key, g.order, g.users)).join('')
+        + (!cards.length ? '<div class="empty">' + mascot(54, c.v, c.v, .22)
+            + '<p>' + (hasF() ? 'nada por aquí con esos filtros' : EMPTY[c.key][0] + ', ' + EMPTY[c.key][2]) + '</p>'
+            + '<div class="face" style="font-size:14px;color:' + c.v + '">' + EMPTY[c.key][1] + '</div></div>' : '')
+        + '</div></section>';
+    }).join('') + '</div>';
+}
+
+function navHtml(){
+  const kind = S.sheet && S.sheet.kind;
+  const items = [
+    { to:'board', icon:'🗂', label:'Tablero', on: !kind || ['detail','filters','confirm'].includes(kind) },
+    { to:'roulette', icon:'🎲', label:'Ruleta', on: kind === 'roulette' },
+    { to:'add', icon:'+', label:'Añadir', on: kind === 'add', pri:true, aria:'Añadir un título nuevo al tablero' },
+    { to:'stats', icon:'📊', label:'Datos', on: kind === 'stats' },
+    { to:'settings', icon:'⚙️', label:'Ajustes', on: kind === 'settings' || kind === 'clubs' },
+  ];
+  return '<nav class="mob" aria-label="Secciones">' + items.map((i) =>
+    '<button class="' + (i.pri ? 'pri' : (i.on ? 'on' : '')) + '" data-a="nav:' + i.to + '" aria-label="' + esc(i.aria || i.label) + '" aria-current="' + (i.on ? 'page' : 'false') + '">'
+    + '<i>' + i.icon + '</i><b>' + i.label + '</b></button>').join('') + '</nav>';
+}
+
+function floatHtml(){
+  let h = '';
+  if (S.drag){
+    const d = S.drag;
+    h += '<div class="ghostcard" style="--c:' + d.c + ';left:' + d.x + 'px;top:' + d.y + 'px;width:' + d.w + 'px">'
+      + '<div style="display:flex;gap:12px;align-items:center">'
+      + '<div style="width:44px;height:66px;border-radius:10px;display:grid;place-items:center;font-weight:800;background:' + soft(d.c, 20) + ';color:' + d.c + '">' + esc(d.ini) + '</div>'
+      + '<div style="min-width:0"><div style="font-weight:800;font-size:15px">' + esc(d.title) + '</div>'
+      + '<div style="font-size:12px;color:var(--text-dim);font-weight:700">' + esc(d.who) + '</div></div></div></div>';
+  }
+  if (S.dock){
+    h += '<div class="dock"><p>suelta en la columna que quieras</p><div>'
+      + COLS.map((c) => '<div class="dockt' + (S.dock.over === c.key ? ' over' : '') + '" data-dockt="' + c.key + '" style="--c:' + c.v + '">'
+          + '<i>' + c.emoji + '</i><b>' + c.label + '</b></div>').join('')
+      + '</div></div>';
+  }
+  S.confetti.forEach((c) => {
+    h += '<span class="conf" style="left:' + c.x + 'px;top:' + c.y + 'px;font-size:' + c.size + 'px;--cx:' + c.dx + 'px;--cy:' + c.dy + 'px;--cr:' + c.rot + 'deg;animation:confetti ' + c.dur + 's ease-out both">' + c.ch + '</span>';
+  });
+  if (S.toast){
+    h += '<div class="toast"><div><span>' + esc(S.toast.text) + '</span>'
+      + (S.toast.label ? '<button data-a="toastact">' + esc(S.toast.label) + '</button>' : '') + '</div></div>';
+  }
+  return h;
+}
+/* ── hoja: detalle ── */
+function detailHtml(){
+  const k = parseKey(S.sheet.key);
+  const it = findItem(k.itemId); if (!it) return '';
+  const c = COL(k.status).v, me = meId();
+  const users = groupUsers(it, k.status, k.order);
+  const all = Object.keys(it.participants);
+  const mine = it.participants[me];
+  const orig = it.originalTitle && norm(it.originalTitle) !== norm(it.title) ? it.originalTitle : null;
+  const meta = [it.type === 'tv' ? '📺 serie' : '🎬 película', it.year,
+    it.seasons ? it.seasons.length + ' temporadas · ' + it.totalEpisodes + ' ep. de ' + it.runtime + ' min' : it.runtime + ' min'].filter(Boolean).join(' · ');
+  const poster = it.poster ? Api.imageUrl(it.poster, 'lg') : null;
+
+  let parts = all.map((u) => {
+    const p = it.participants[u], uu = user(u), cc = COL(p.status).v, you = u === me;
+    let row = '<div class="prow2' + (you ? ' me' : '') + '" style="--c:' + c + '">'
+      + '<div style="display:flex;align-items:center;gap:10px">'
+      + '<span class="av s34" style="--c:' + uu.color + '">' + uu.emoji + '</span>'
+      + '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px">' + esc(uu.name + (you ? ' (tú)' : '')) + '</div>'
+      + '<div style="font-size:11.5px;font-weight:700;color:' + cc + '">' + COL(p.status).emoji + ' ' + COL(p.status).label
+        + (p.progress ? ' · T' + p.progress.s + ' E' + p.progress.e : '')
+        + (p.status === 'wish' ? ' · ganas ' + '💗'.repeat(p.hype) : '') + '</div></div>'
+      + (p.rating ? '<span style="font-size:14px;color:var(--done);letter-spacing:1px;flex:none">' + STARS(p.rating) + '</span>' : '')
+      + '</div>';
+    if (you){
+      let moves = '';
+      if (p.status === 'watching' && it.type === 'tv'){
+        moves += '<button class="pill" data-a="d.ep:-1">− ep. anterior</button>'
+          + '<button class="pill on" style="--c:' + c + '" data-a="d.ep:1">+ siguiente ep.</button>';
+      }
+      moves += CK.filter((x) => x !== p.status).map((x) => '<button class="pill" style="background:' + soft(COL(x).v, 15) + ';color:' + COL(x).v + '" data-a="d.to:' + x + '">' + COL(x).emoji + ' ' + COL(x).label + '</button>').join('');
+      row += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + moves + '</div>';
+      if (p.status === 'done' || p.status === 'dropped'){
+        row += '<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span class="lbl">tu nota</span>'
+          + [1,2,3,4,5].map((n) => '<button class="r44' + (S.pop && n <= S.pop ? ' pop' : '') + '" data-a="d.rate:' + n + '" style="font-size:21px;color:' + (n <= (p.rating || 0) ? 'var(--done)' : 'var(--text-dim)') + ';background:' + (n <= (p.rating || 0) ? soft('var(--done)', 12) : '#ffffff08') + '">' + (n <= (p.rating || 0) ? '★' : '☆') + '</button>').join('')
+          + '</div>';
+      }
+    }
+    return row + '</div>';
+  }).join('');
+
+  const joins = [], seen = {};
+  if (mine) all.forEach((u) => {
+    if (u === me) return;
+    const p = it.participants[u];
+    if (p.status === mine.status && p.order === mine.order) return;
+    const kk = p.status + '|' + p.order; if (seen[kk]) return; seen[kk] = 1;
+    const uu = user(u);
+    joins.push('<button class="big" data-a="d.join:' + u + '" style="background:' + soft(COL(p.status).v, 16) + ';color:' + COL(p.status).v + '">🤝 me uno a ' + esc(uu.name) + ' ' + uu.emoji + ' (' + COL(p.status).label.toLowerCase() + ')</button>');
+  });
+  const canSolo = !!(mine && users.length > 1 && users.includes(me));
+  const notes = it.notes.slice().sort((a, b) => new Date(a.at) - new Date(b.at));
+  const fuera = otrosClubes(it.tmdbId);
+
+  return '<div style="--c:' + c + '">'
+    + '<div style="display:flex;gap:14px;align-items:flex-start">'
+    + (poster ? '<div class="dposter" role="img" aria-label="' + esc(it.title) + '" style="' + bgImg(poster) + '"></div>'
+              : '<div class="dposter ink">' + esc(it.title.slice(0, 2).toUpperCase()) + '</div>')
+    + '<div style="flex:1;min-width:0"><div class="dtitle">' + esc(it.title) + '</div>'
+    + (orig ? '<div style="font-size:13px;color:var(--text-dim);font-style:italic;margin-top:2px">' + esc(orig) + '</div>' : '')
+    + '<div style="font-size:13px;color:var(--text-dim);font-weight:700;margin-top:7px">' + esc(meta) + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">' + it.genres.map((g) => '<span class="gchip">' + esc(g) + '</span>').join('') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'
+    + it.providers.map((p) => '<span class="pchip"><i style="' + bgImg(Api.imageUrl(p.logo, 'sm')) + '"></i><span>' + esc(p.name) + '</span></span>').join('')
+    + (!it.providers.length ? '<span style="font-size:12px;font-weight:700;color:var(--text-dim)">no está en ninguna plataforma vuestra 🏴‍☠️</span>' : '')
+    + '</div></div></div>'
+    + (it.overview ? '<p style="font-size:14px;line-height:1.55;color:var(--text-dim);margin:16px 0 0" class="pretty">' + esc(it.overview) + '</p>' : '')
+    + '<div class="lbl-u" style="margin-top:20px">quién la lleva</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' + parts + '</div>'
+    + (fuera.length ? '<div class="xclub" style="margin-top:9px">🛋️<div>'
+        + fuera.map((x) => esc(fraseOtroClub(x))).join('<br>')
+        + '<br><span style="opacity:.75">esto sólo lo ves tú, y sólo en este dispositivo.</span></div></div>' : '')
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">'
+    + (canSolo ? '<button class="big" data-a="d.solo">🚶 seguir yo solo</button>' : '')
+    + joins.join('')
+    + '<button class="big" data-a="d.del" style="flex:none;min-width:0;padding:0 18px;background:#ffffff0d;color:var(--text-dim)">🗑 borrar</button>'
+    + '</div>'
+    + '<div class="lbl-u" style="margin-top:22px">notas (' + notes.length + ')</div>'
+    + '<div style="display:flex;flex-direction:column;gap:9px;margin-top:10px">'
+    + notes.map((n) => { const uu = user(n.by);
+        return '<div class="note"><span class="av s30" style="--c:' + uu.color + '">' + uu.emoji + '</span><div>'
+          + '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:800;font-size:12.5px">' + esc(uu.name) + '</span>'
+          + '<span style="font-size:11px;color:var(--text-dim);font-weight:600">' + ago(n.at) + '</span>'
+          + (n.by === me ? '<button data-a="d.note:' + n.id + '" style="margin-left:auto;font-size:11px;font-weight:800;color:var(--text-dim);min-width:44px;min-height:28px">borrar</button>' : '')
+          + '</div><div style="font-size:13.5px;line-height:1.45;margin-top:3px" class="pretty">' + esc(n.text) + '</div></div></div>';
+      }).join('')
+    + (!notes.length ? '<div style="font-size:13px;color:var(--text-dim);font-weight:600">nadie ha dicho nada todavía <span class="face">( ˘ω˘ )</span></div>' : '')
+    + '<div style="display:flex;gap:8px;align-items:center;margin-top:4px">'
+    + '<input id="notei" class="inp" style="height:46px;font-size:14px;font-weight:600" value="' + esc(S.noteDraft) + '" data-in="note" placeholder="escribe algo…">'
+    + '<button class="r44" data-a="d.send" aria-label="Enviar nota" style="width:46px;height:46px;background:var(--watching);color:var(--ink);font-size:18px;font-weight:800">↑</button>'
+    + '</div></div></div>';
+}
+
+/* ── hoja: añadir ── */
+function addHtml(){
+  const res = S.addResults, me = meId();
+  let h = '<div class="stitle">añadir un título nuevo</div>'
+    + '<div class="ssub">esto busca en el catálogo entero. Para encontrar algo que ya tenéis apuntado, usa Filtros.</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;background:#ffffff0f;border-radius:999px;padding:0 16px;height:52px;margin-top:12px">'
+    + '<span style="opacity:.7">🔎</span>'
+    + '<input id="addi" data-in="add" value="' + esc(S.addQ) + '" placeholder="serie o peli…" style="flex:1;min-width:0;height:44px;background:none;border:0;outline:none;font-size:16px;font-weight:700">'
+    + '</div>';
+  if (!Api.hasTmdb()) h += '<div class="banner" style="margin:14px 0 0">falta la clave de TMDB: sin ella no puedo buscar en el catálogo.</div>';
+  if (S.addSearching) h += '<div style="display:flex;align-items:center;gap:10px;margin-top:16px;font-size:13.5px;font-weight:700;color:var(--text-dim)"><span class="float" style="font-size:18px">🔮</span> buscando en el catálogo…</div>';
+  if (res && !res.length && S.addQ.trim() && !S.addSearching){
+    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 10px;text-align:center">'
+      + '<span class="face" style="font-size:17px;color:var(--wish)">(・_・;)</span>'
+      + '<div style="font-size:14px;font-weight:700;color:var(--text-dim);max-width:260px">nada con «' + esc(S.addQ) + '». ¿lo habéis escrito raro o es muy de nicho?</div></div>';
+  }
+  h += '<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">'
+    + (res || []).map((r) => {
+      const have = S.data.items.find((i) => i.tmdbId === r.tmdbId);
+      const mineHas = have && have.participants[me];
+      const others = have ? Object.keys(have.participants).map((u) => user(u).emoji).join('') : '';
+      const fuera = have ? [] : otrosClubes(r.tmdbId);
+      return '<button class="res' + (have ? ' have' : '') + '" data-a="a.pick:' + r.tmdbId + '">'
+        + '<i style="' + bgImg(Api.imageUrl(r.poster, 'sm')) + '"></i>'
+        + '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px">' + esc(r.title) + '</div>'
+        + '<div style="font-size:12px;color:var(--text-dim);font-weight:700;margin-top:2px">' + (r.type === 'tv' ? '📺 serie' : '🎬 peli') + ' · ' + (r.year || '?') + (r.originalTitle !== r.title ? ' · ' + esc(r.originalTitle) : '') + '</div>'
+        + (have ? '<div style="font-size:11.5px;font-weight:800;color:var(--wish);margin-top:4px">' + (mineHas ? 'ya lo tienes en ' + COL(mineHas.status).label : others + ' ya lo tienen en el tablero') + '</div>' : '')
+        + (fuera.length ? '<div style="font-size:11.5px;font-weight:800;color:var(--watching);margin-top:4px">🛋️ ' + esc(fraseOtroClub(fuera[0])) + '</div>' : '')
+        + '</div><span class="cue' + (have && !mineHas ? ' join' : '') + '">' + (have ? (mineHas ? 'ya está' : 'unirme') : '+') + '</span></button>';
+    }).join('') + '</div>';
+  if (S.addPick){
+    const p = S.addPick;
+    h += '<div style="margin-top:18px;background:var(--surface);border-radius:22px;padding:14px">'
+      + '<div style="display:flex;gap:12px;align-items:center">'
+      + '<span style="width:52px;height:78px;border-radius:12px;flex:none;background-color:#0003;background-size:cover;background-position:center;display:block;' + bgImg(Api.imageUrl(p.poster, 'md')) + '"></span>'
+      + '<div style="min-width:0"><div style="font-weight:800;font-size:15px">' + esc(p.title) + '</div>'
+      + '<div style="font-size:12px;color:var(--text-dim);font-weight:700">' + (p.type === 'tv' ? '📺 serie' : '🎬 peli') + ' · ' + (p.year || '?') + '</div></div></div>'
+      + '<div class="lbl" style="margin-top:14px">¿dónde lo pongo?</div>'
+      + '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'
+      + COLS.map((c) => '<button class="pill" style="flex:1;min-width:88px;justify-content:center;font-size:12.5px;background:' + (p.status === c.key ? soft(c.v, 24) : '#ffffff0d') + ';color:' + (p.status === c.key ? c.v : 'var(--text-dim)') + '" data-a="a.col:' + c.key + '">' + c.emoji + ' ' + c.label + '</button>').join('')
+      + '</div>'
+      + (p.status === 'wish' ? '<div style="display:flex;align-items:center;gap:8px;margin-top:12px"><span class="lbl">tus ganas</span>'
+          + [1,2,3].map((n) => '<button class="r44" data-a="a.hype:' + n + '" style="font-size:17px;background:' + (n <= p.hype ? soft('var(--wish)', 22) : '#ffffff0a') + '">' + (n <= p.hype ? '💗' : '🤍') + '</button>').join('') + '</div>' : '')
+      + '<button class="cta" style="margin-top:14px" data-a="a.confirm">añadir al tablero</button></div>';
+  }
+  return h;
+}
+
+/* ── hoja: buscar y filtrar ── */
+function filtersHtml(){
+  const d = S.data, f = S.fd || S.f;
+  const provs = [].concat.apply([], d.items.map((i) => i.providers.map((p) => p.name))).filter((v, i, a) => a.indexOf(v) === i);
+  const pill = (a, label, on, c, avatarUser) => '<button class="pill' + (on ? ' on' : '') + '" style="--c:' + c + (avatarUser ? ';padding-left:5px' : '') + '" data-a="' + a + '">'
+    + (avatarUser ? '<span class="av s30" style="--c:' + avatarUser.color + '">' + avatarUser.emoji + '</span>' : '') + '<span>' + esc(label) + '</span></button>';
+  const n = countTitles(f);
+  const mineOnly = f.who.length === 1 && f.who[0] === meId();
+  const sections = [
+    { t:'qué es', chips:[pill('f.t:tv', '📺 series', f.type === 'tv', 'var(--watching)'), pill('f.t:movie', '🎬 pelis', f.type === 'movie', 'var(--watching)')] },
+    { t:'quién lo tiene apuntado', hint:'con mucha gente en el tablero, el filtro más útil',
+      chips:[pill('f.mine', '👤 solo lo mío', mineOnly, 'var(--wish)')].concat(d.users.map((u) => pill('f.who:' + u.id, u.name, f.who.includes(u.id), u.color, u))) },
+    { t:'dónde está', chips:[pill('f.avail', '📡 disponible ahora', f.avail, 'var(--done)')].concat(provs.map((p) => pill('f.prov:' + p, p, f.provs.includes(p), 'var(--done)'))) },
+    { t:'nivel de ganas', hint:'solo mira la columna «Nos apetece»',
+      chips:[pill('f.hu:any', 'de quien sea', f.hypeUser === 'any', 'var(--wish)')]
+        .concat(d.users.map((u) => pill('f.hu:' + u.id, u.name, f.hypeUser === u.id, u.color, u)))
+        .concat([1,2,3].map((m) => pill('f.hm:' + m, '💗'.repeat(m) + (m < 3 ? ' o más' : ' del todo'), !!f.hypeUser && f.hypeMin === m, 'var(--wish)'))) },
+    { t:'lo propuso', chips:d.users.map((u) => pill('f.by:' + u.id, u.name, f.by.includes(u.id), u.color, u)) },
+  ];
+  return '<div class="stitle">buscar en vuestro tablero</div>'
+    + '<div class="ssub">solo mira lo que ya tenéis apuntado; para traer algo nuevo está el botón de añadir.</div>'
+    + '<button class="pill" style="margin-top:10px;color:var(--wish)" data-a="add"><span style="font-size:18px;line-height:1">+</span> añadir un título nuevo</button>'
+    + '<div style="display:flex;align-items:center;gap:10px;background:#ffffff0f;border-radius:999px;padding:0 8px 0 16px;height:52px;margin-top:14px">'
+    + '<span style="opacity:.7">🔍</span>'
+    + '<input id="qsheet" data-in="q" value="' + esc(S.q) + '" aria-label="Buscar por título" placeholder="título o título original…" style="flex:1;min-width:0;height:44px;background:none;border:0;outline:none;font-size:15.5px;font-weight:700">'
+    + (S.q ? '<button class="r44" data-a="rm:q" aria-label="Quitar la búsqueda" style="background:#ffffff14;font-size:13px">✕</button>' : '')
+    + '</div>'
+    + sections.map((s) => '<div style="margin-top:20px"><div class="lbl-u">' + s.t + '</div>'
+        + (s.hint ? '<div style="font-size:12px;color:var(--text-dim);font-weight:600;opacity:.8;margin-top:3px">' + s.hint + '</div>' : '')
+        + '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:10px">' + s.chips.join('') + '</div></div>').join('')
+    + '<div class="footbar"><button data-a="f.clear" style="flex:none;height:52px;padding:0 20px;border-radius:999px;background:#ffffff12;font-size:14px;font-weight:800;color:var(--text-dim)">limpiar</button>'
+    + '<button class="cta" style="flex:1" data-a="f.apply">' + (!hasF(f) ? 'ver los ' + countTitles(F0) + ' títulos' : (n ? 'ver ' + n + (n === 1 ? ' título' : ' títulos') : 'nada coincide')) + '</button></div>';
+}
+
+/* ── hoja: confirmación ── */
+function confirmHtml(){
+  const a = S.confirmAsk; if (!a) return '';
+  const v = a.kind === 'user'
+    ? { face:'(๑•̀ㅂ•́)', title:'¿quitamos a ' + a.name + '?', body:'desaparece del tablero con todo lo que tenía apuntado. Siempre puedes volver a invitarle.', cta:'sí, quitar' }
+    : a.kind === 'leave'
+    ? { face:'( ˘ω˘ )', title:'¿sales de «' + a.group + '» en este dispositivo?', body:'se borran de aquí tu clave y la copia del tablero. El club sigue igual para los demás y tú sigues siendo de él, pero para volver a entrar necesitarás una invitación nueva.', cta:'sí, salir' }
+    : { face:'(・_・;)', title:'¿fuera «' + a.title + '»?', body:'se va para todo el mundo, con sus notas y sus puntuaciones. Tienes unos segundos para deshacerlo.', cta:'sí, borrar' };
+  return '<div style="text-align:center;padding:8px 4px 0">'
+    + '<div class="face" style="font-size:18px;color:var(--wish)">' + v.face + '</div>'
+    + '<div style="font-weight:800;font-size:19px;margin-top:10px;letter-spacing:-.3px" class="pretty">' + esc(v.title) + '</div>'
+    + '<div style="font-size:13.5px;color:var(--text-dim);font-weight:600;margin-top:7px" class="pretty">' + v.body + '</div>'
+    + '<div style="display:flex;gap:8px;margin-top:18px">'
+    + '<button class="cta" style="flex:1;background:#ffffff12;color:var(--text)" data-a="close">mejor no</button>'
+    + '<button class="cta" style="flex:1" data-a="confirmyes">' + v.cta + '</button></div></div>';
+}
+/* ── hoja: ruleta ── */
+function candidates(){
+  const r = S.roul || { users:[], provs:[], kind:'both' };
+  return S.data.items.map((it) => {
+    let w = 0;
+    r.users.forEach((u) => { const p = it.participants[u]; if (p && p.status === 'wish') w += p.hype; });
+    if (!w) return null;
+    if (r.kind !== 'both' && it.type !== r.kind) return null;
+    if (r.time && (it.runtime || 0) > r.time) return null;
+    if (r.provs.length && !it.providers.some((p) => r.provs.includes(p.name))) return null;
+    return { item:it, w:w };
+  }).filter(Boolean);
+}
+function rouletteHtml(){
+  const r = S.roul; if (!r) return '';
+  const d = S.data;
+  const provs = [].concat.apply([], d.items.map((i) => i.providers.map((p) => p.name))).filter((v, i, a) => a.indexOf(v) === i).slice(0, 6);
+  const on = (v, c) => 'background:' + (v ? soft(c, 22) : '#ffffff0d') + ';color:' + (v ? c : 'var(--text-dim)');
+  let h = '<div class="stitle">¿qué vemos hoy?</div>';
+  if (!r.spinning && !r.result && !r.nothing){
+    const cands = candidates();
+    h += '<div class="lbl" style="margin-top:16px">quién ve esta noche</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:9px">'
+      + d.users.map((u) => { const sel = r.users.includes(u.id);
+          return '<button data-a="r.user:' + u.id + '" style="height:46px;padding:0 14px 0 5px;border-radius:999px;display:flex;align-items:center;gap:8px;' + on(sel, u.color) + ';box-shadow:' + (sel ? 'inset 0 0 0 2px ' + soft(u.color, 60) : 'none') + '">'
+            + '<span class="av" style="--c:' + u.color + ';width:36px;height:36px;font-size:18px">' + u.emoji + '</span>'
+            + '<span style="font-size:13.5px;font-weight:800">' + esc(u.name) + '</span></button>'; }).join('')
+      + '</div>'
+      + '<div class="lbl" style="margin-top:18px">cuánto tiempo hay</div><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:9px">'
+      + [[30,'30 min'],[60,'1 h'],[120,'2 h'],[0,'da igual']].map((t) => '<button class="pill" style="' + on(t[0] ? r.time === t[0] : !r.time, 'var(--wish)') + '" data-a="r.time:' + t[0] + '">' + t[1] + '</button>').join('')
+      + '</div>'
+      + '<div class="lbl" style="margin-top:18px">qué apetece</div><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:9px">'
+      + [['both','las dos cosas'],['tv','📺 series'],['movie','🎬 pelis']].map((k) => '<button class="pill" style="' + on(r.kind === k[0], 'var(--watching)') + '" data-a="r.kind:' + k[0] + '">' + k[1] + '</button>').join('')
+      + '</div>'
+      + (provs.length ? '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px">'
+          + provs.map((p) => '<button class="pill" style="' + on(r.provs.includes(p), 'var(--dropped)') + '" data-a="r.prov:' + p + '">' + esc(p) + '</button>').join('') + '</div>' : '')
+      + '<button class="cta" style="height:56px;font-size:16px;margin-top:20px;background:var(--wish);color:#2A2016;box-shadow:0 14px 34px -16px var(--wish)" data-a="r.spin">🎲 sortear entre ' + cands.length + (cands.length === 1 ? ' título' : ' títulos') + '</button>'
+      + '<div style="text-align:center;font-size:12px;color:var(--text-dim);font-weight:600;margin-top:8px">pesa las ganas de quien esté en el sofá</div>';
+  }
+  if (r.spinning){
+    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:26px 0 34px">'
+      + '<div class="spin" style="' + bgImg(r.frame) + '"></div><div style="font-weight:800;font-size:15px">barajando…</div></div>';
+  }
+  if (r.result && !r.spinning){
+    const res = findItem(r.result);
+    if (res) h += '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px 0 8px">'
+      + '<div class="rposter" role="img" aria-label="' + esc(res.title) + '" style="' + bgImg(Api.imageUrl(res.poster, 'lg')) + '"></div>'
+      + '<div style="font-weight:800;font-size:21px;text-align:center;letter-spacing:-.3px" class="pretty">' + esc(res.title) + '</div>'
+      + '<div style="font-size:13px;color:var(--text-dim);font-weight:700;text-align:center">' + (res.type === 'tv' ? '📺 serie' : '🎬 peli') + ' · ' + (res.year || '') + ' · ' + res.runtime + ' min' + (res.providers.length ? ' · ' + esc(res.providers[0].name) : '') + '</div>'
+      + '<div style="font-size:12.5px;color:var(--wish);font-weight:800">' + r.users.map((u) => user(u).emoji).join('') + ' le tenéis ganas ' + '💗'.repeat(clamp(Math.round((r.weight || 2) / Math.max(1, r.users.length)), 1, 3)) + '</div>'
+      + '<div style="display:flex;gap:8px;width:100%;margin-top:10px;flex-wrap:wrap">'
+      + '<button class="cta" style="flex:2;min-width:150px" data-a="r.accept">venga, esta</button>'
+      + '<button class="cta" style="flex:1;min-width:110px;background:#ffffff12;color:var(--text)" data-a="r.spin">otra</button></div></div>';
+  }
+  if (r.nothing && !r.spinning){
+    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 10px;text-align:center">'
+      + '<span class="face" style="font-size:17px;color:var(--wish)">(・_・;)</span>'
+      + '<div style="font-size:14px;font-weight:700;color:var(--text-dim);max-width:280px">con esos filtros no queda nada. suelta un poco el tiempo o añade plataformas</div></div>';
+  }
+  return h;
+}
+
+/* ── hoja: estadísticas ── */
+function statsHtml(){
+  const d = S.data, me = meId(), mineOnly = S.statScope === 'me', year = S.statYear;
+  const rows = [];
+  d.items.forEach((it) => Object.keys(it.participants).forEach((u) => {
+    if (mineOnly && u !== me) return;
+    const p = it.participants[u];
+    const y = p.finishedAt ? new Date(p.finishedAt).getFullYear() : null;
+    if (year !== 'all' && String(y) !== year) return;
+    rows.push({ item:it, u:u, p:p });
+  }));
+  const done = rows.filter((r) => r.p.status === 'done');
+  const series = done.filter((r) => r.item.type === 'tv').length;
+  const movies = done.filter((r) => r.item.type === 'movie').length;
+  const mins = rows.reduce((a, r) => {
+    const it = r.item;
+    if (it.type === 'movie') return a + (r.p.status === 'done' ? it.runtime : 0);
+    const eps = r.p.status === 'done' ? (it.totalEpisodes || 0) : absEp(it, r.p.progress);
+    return a + eps * it.runtime;
+  }, 0);
+  const hours = Math.round(mins / 60);
+  const human = hours > 48 ? nfmt(hours / 24) + ' días seguidos de televisión' : nfmt(hours / 3.5) + ' tardes de sofá enteras';
+  const rated = rows.filter((r) => r.p.rating);
+  const avg = rated.length ? rated.reduce((a, r) => a + r.p.rating, 0) / rated.length : 0;
+  const best = rated.slice().sort((a, b) => b.p.rating - a.p.rating)[0];
+  const worst = rated.slice().sort((a, b) => a.p.rating - b.p.rating)[0];
+  const dropped = rows.filter((r) => r.p.status === 'dropped');
+  const dropEp = dropped.filter((r) => r.p.progress).map((r) => absEp(r.item, r.p.progress));
+  const genres = {}; done.forEach((r) => r.item.genres.forEach((g) => { genres[g] = (genres[g] || 0) + 1; }));
+  const gTop = Object.keys(genres).map((g) => [g, genres[g]]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const gMax = gTop.length ? gTop[0][1] : 1;
+  const props = {}; d.items.forEach((i) => { props[i.addedBy] = (props[i.addedBy] || 0) + 1; });
+  const pTop = Object.keys(props).map((u) => [u, props[u]]).sort((a, b) => b[1] - a[1]);
+  const pMax = pTop.length ? pTop[0][1] : 1;
+  const hit = Object.keys(props).map((u) => {
+    const rr = [];
+    d.items.filter((i) => i.addedBy === u).forEach((i) => Object.keys(i.participants).forEach((k) => { const p = i.participants[k]; if (p.rating) rr.push(p.rating); }));
+    return { u:u, n: rr.length ? rr.reduce((a, b) => a + b, 0) / rr.length : 0 };
+  }).filter((x) => x.n).sort((a, b) => b.n - a.n);
+  const pairs = [];
+  d.users.forEach((a, i) => d.users.slice(i + 1).forEach((b) => {
+    const diffs = [];
+    d.items.forEach((it) => { const pa = it.participants[a.id], pb = it.participants[b.id];
+      if (pa && pb && pa.rating && pb.rating) diffs.push(Math.abs(pa.rating - pb.rating)); });
+    if (diffs.length) pairs.push({ a:a, b:b, n: diffs.reduce((x, y) => x + y, 0) / diffs.length });
+  }));
+  pairs.sort((x, y) => x.n - y.n);
+  const years = ['all'].concat([].concat.apply([], d.items.map((i) => Object.keys(i.participants).map((k) => i.participants[k].finishedAt && new Date(i.participants[k].finishedAt).getFullYear())))
+    .filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => b - a).map(String));
+  const total = series + movies || 1;
+  const ringA = Math.round((series / total) * 100);
+
+  const bar = (label, value, pct, c) => '<div class="srow" style="--c:' + c + '"><b>' + label + '</b><i><u style="width:' + pct + '%"></u></i><em>' + value + '</em></div>';
+  const block = (title, rowsH, note) => '<div class="b" style="margin-top:10px"><div class="lbl">' + title + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:9px;margin-top:11px">' + rowsH + '</div>'
+    + (note ? '<div style="font-size:12.5px;color:var(--text-dim);font-weight:600;margin-top:11px" class="pretty">' + esc(note) + '</div>' : '') + '</div>';
+
+  return '<div style="display:flex;align-items:center;gap:10px">'
+    + '<div class="stitle" style="flex:1">estadísticas</div>'
+    + '<div style="display:flex;background:#ffffff0f;border-radius:999px;padding:3px">'
+    + [['me','mías'],['group','del grupo']].map((s) => '<button class="pill" style="background:' + (S.statScope === s[0] ? 'var(--wish)' : 'transparent') + ';color:' + (S.statScope === s[0] ? '#2A2016' : 'var(--text-dim)') + '" data-a="s.scope:' + s[0] + '">' + s[1] + '</button>').join('')
+    + '</div></div>'
+    + '<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">'
+    + years.map((y) => '<button class="pill" style="background:' + (year === y ? soft('var(--done)', 20) : '#ffffff0d') + ';color:' + (year === y ? 'var(--done)' : 'var(--text-dim)') + '" data-a="s.year:' + y + '">' + (y === 'all' ? 'todo' : y) + '</button>').join('')
+    + '</div>'
+    + '<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:14px">'
+    + [['terminadas', series + movies, series + ' series y ' + movies + ' pelis', 'var(--done)'],
+       ['horas vistas', hours + ' h', human, 'var(--watching)'],
+       ['nota media', avg ? nfmt(avg) : '–', rated.length + ' puntuaciones puestas', 'var(--wish)']]
+      .map((b) => '<div class="stat" style="--c:' + b[3] + '"><div class="lbl">' + b[0] + '</div><b>' + b[1] + '</b><p>' + esc(b[2]) + '</p></div>').join('')
+    + '</div>'
+    + '<div class="b" style="margin-top:10px"><div class="lbl">series y pelis terminadas</div>'
+    + '<div style="display:flex;align-items:center;gap:16px;margin-top:10px">'
+    + '<svg width="104" height="104" viewBox="0 0 42 42" aria-hidden="true" style="flex:none">'
+    + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="#ffffff14" stroke-width="7"/>'
+    + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--done)" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + ringA + ' ' + (100 - ringA) + '" stroke-dashoffset="25" transform="rotate(-90 21 21)"/></svg>'
+    + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">'
+    + [['📺 series', series, ringA, 'var(--done)'], ['🎬 pelis', movies, 100 - ringA, 'var(--wish)']].map((s) =>
+        '<div><div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:13px;font-weight:800">' + s[0] + '</span>'
+        + '<span style="font-size:12px;color:var(--text-dim);font-weight:700">' + s[1] + '</span></div>'
+        + '<div class="bar" style="--c:' + s[3] + ';height:8px"><i style="width:' + s[2] + '%"></i></div></div>').join('')
+    + '</div></div></div>'
+    + block('géneros que más caen', gTop.map((g) => bar(esc(g[0]), g[1], Math.round((g[1] / gMax) * 100), 'var(--watching)')).join(''),
+        gTop.length ? 'lo vuestro es ' + gTop[0][0].toLowerCase() : 'aún no hay nada terminado')
+    + block('quién propone más', pTop.map((p) => bar(user(p[0]).emoji + ' ' + esc(user(p[0]).name), p[1], Math.round((p[1] / pMax) * 100), soft(user(p[0]).color, 85))).join(''),
+        hit.length ? 'a quien mejor le sale: ' + user(hit[0].u).name + ' ' + user(hit[0].u).emoji + ' (media ' + nfmt(hit[0].n) + ')' : null)
+    + block('mejor y peor paradas',
+        [best ? bar('🏆 ' + esc(best.item.title.slice(0, 22)), STARS(best.p.rating), 100, 'var(--done)') : '',
+         worst ? bar('🥀 ' + esc(worst.item.title.slice(0, 22)), STARS(worst.p.rating), Math.round((worst.p.rating / 5) * 100), 'var(--dropped)') : ''].join(''),
+        dropped.length ? dropped.length + ' dejadas a medias, normalmente sobre el episodio ' + (dropEp.length ? Math.round(dropEp.reduce((a, b) => a + b, 0) / dropEp.length) : '?') : 'ni una abandonada, qué disciplina')
+    + (pairs.length ? block('quién coincide con quién',
+        pairs.slice(0, 4).map((p) => bar(p.a.emoji + p.b.emoji + ' ' + esc(p.a.name), nfmt(5 - p.n * 1.5), Math.round(clamp((1 - p.n / 3) * 100, 6, 100)), soft(p.a.color, 80))).join(''),
+        'arriba los que más se parecen; ' + pairs[pairs.length - 1].a.name + ' y ' + pairs[pairs.length - 1].b.name + ' es donde salta la discusión') : '');
+}
+
+/* ── hoja: ajustes ── */
+function settingsHtml(){
+  const p = S.prof || {}, d = S.data, alone = d.users.length <= 1;
+  const ss = S.saveState, is = S.inviteState, cs = S.copyState;
+  return '<div class="stitle">ajustes</div>'
+    + '<div class="b" style="border-radius:22px;margin-top:14px">'
+    + '<div class="lbl">tu perfil</div>'
+    + '<div style="display:flex;align-items:center;gap:12px;margin-top:11px">'
+    + '<span class="av s52" style="--c:' + (p.color || PALETTE[0]) + '">' + (p.emoji || '🐻') + '</span>'
+    + '<input id="pname" class="inp" data-in="pname" value="' + esc(p.name || '') + '" style="height:48px;font-size:15px;font-weight:800"></div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">'
+    + EMOJIS.slice(0, 16).map((e) => '<button class="r44" data-a="p.emoji:' + e + '" style="font-size:20px;background:' + (p.emoji === e ? soft(p.color || PALETTE[0], 30) : '#ffffff0d') + '">' + e + '</button>').join('')
+    + '</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">'
+    + PALETTE.map((h) => '<button class="r44" data-a="p.color:' + encodeURIComponent(h) + '" aria-label="' + h + '" style="background:' + h + ';box-shadow:' + (p.color === h ? '0 0 0 3px var(--surface-2),0 0 0 5px ' + h : 'none') + '"></button>').join('')
+    + '</div>'
+    + '<button class="cta" style="height:48px;font-size:14.5px;margin-top:14px;background:' + (ss === 'saving' ? 'color-mix(in oklab,var(--watching) 55%,var(--surface))' : ss === 'done' ? 'var(--done)' : 'var(--watching)') + '" data-a="p.save">'
+    + (ss === 'saving' ? 'guardando…' : ss === 'done' ? '✓ guardado' : 'guardar') + '</button></div>'
+    + '<div class="b" style="border-radius:22px;margin-top:10px"><div class="lbl">paleta</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:11px">'
+    + THEMES.map((t) => '<button class="themeb' + (S.theme === t.key ? ' on' : '') + '" style="background:' + t.bg + ';--c:' + t.dots[1] + '" data-a="theme:' + t.key + '">'
+        + '<div style="display:flex;gap:5px">' + t.dots.map((c) => '<span style="width:14px;height:14px;border-radius:999px;background:' + c + '"></span>').join('') + '</div>'
+        + '<span style="font-size:12.5px;font-weight:800;color:' + t.fg + ';text-align:left">' + t.label + '</span></button>').join('')
+    + '</div></div>'
+    + '<div class="b" style="border-radius:22px;margin-top:10px">'
+    + '<div class="lbl">' + (alone ? 'sois una persona (por ahora)' : d.users.length + ' personas en el tablero') + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:11px">'
+    + d.users.map((u) => '<div style="display:flex;align-items:center;gap:11px">'
+        + '<span class="av s38" style="--c:' + u.color + '">' + u.emoji + '</span>'
+        + '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">' + esc(u.name + (u.id === d.me ? ' (tú)' : '')) + '</div>'
+        + '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600">' + since(u.joinedAt) + '</div></div>'
+        + (u.id !== d.me ? '<button data-a="p.rmuser:' + u.id + '" style="flex:none;min-width:44px;min-height:44px;font-size:12px;font-weight:800;color:var(--text-dim)">quitar</button>' : '')
+        + '</div>').join('')
+    + '</div>'
+    + (alone ? '<div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-top:12px" class="pretty">de momento el tablero es tuyo y solo tuyo, que también está muy bien <span class="face">( ˘ω˘ )</span></div>' : '')
+    + '<button class="cta" style="margin-top:14px;background:' + (is === 'making' ? 'color-mix(in oklab,var(--wish) 55%,var(--surface))' : is === 'ready' ? 'color-mix(in oklab,var(--wish) 70%,var(--surface))' : 'var(--wish)') + ';color:#2A2016" data-a="p.invite">'
+    + (is === 'making' ? 'preparando el enlace…' : is === 'ready' ? '🔄 generar otro enlace' : '💌 invitar a alguien') + '</button>'
+    + (S.invite ? '<div class="fade" style="margin-top:11px;background:#ffffff0d;border-radius:18px;padding:12px">'
+        + '<div style="font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;color:var(--wish)">' + esc(S.invite) + '</div>'
+        + '<button class="cta" style="height:44px;font-size:13px;margin-top:10px;background:' + (cs === 'done' ? 'var(--done)' : '#ffffff14') + ';color:' + (cs === 'done' ? 'var(--ink)' : 'var(--text)') + '" data-a="p.copy">' + (cs === 'done' ? '✓ copiado' : 'copiar enlace') + '</button>'
+        + '<div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-top:10px" class="pretty">quien abra este enlace entra con permiso para editar el tablero entero: mover, puntuar y borrar. Mándalo solo a gente del sofá.</div></div>' : '')
+    + '</div>'
+    + (() => {
+        const gs = Api.grupos ? Api.grupos() : [];
+        const act = gs.find((g) => g.activo);
+        if (!act) return '';
+        return '<div class="b" style="border-radius:22px;margin-top:10px"><div class="lbl">tus clubes</div>'
+          + '<button class="clubc" style="margin-top:11px;background:#ffffff0a" data-a="p.clubs">'
+          + '<span class="av s38" style="--c:var(--watching)">🛋️</span>'
+          + '<span style="flex:1;min-width:0;display:block">'
+          + '<span style="display:block;font-weight:800;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(act.group) + '</span>'
+          + '<span style="display:block;font-size:11.5px;color:var(--text-dim);font-weight:700;margin-top:2px">'
+          + (gs.length > 1 ? 'estás en ' + gs.length + ' clubes · toca para cambiar' : 'el único de este dispositivo') + '</span></span>'
+          + '<span style="flex:none;color:var(--text-dim);font-weight:800;font-size:15px">›</span></button></div>';
+      })()
+    + '<div class="b" style="border-radius:22px;margin-top:10px"><div class="lbl">este dispositivo</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">'
+    + '<button class="pill" data-a="p.welcome">👋 cambiar de perfil</button>'
+    + (Api.isDemo() ? '' : '<button class="pill" data-a="p.forget">🚪 salir de este dispositivo</button>')
+    + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600;margin-top:12px" class="pretty">'
+    + (Api.isDemo() ? 'modo demo: no hay ningún club conectado.'
+        : 'club «' + esc(Api.repoName() || '?') + '» · tu clave es tuya y sólo tuya: nadie puede escribir en tu nombre.')
+    + '</div></div>'
+    + '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600;margin-top:14px;text-align:center" class="pretty">Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB. Hecho con cariño para un sofá y la gente que se sienta en él.</div>';
+}
+
+/* ── hoja: tus clubes ──────────────────────────────────────────────────────
+   Todo lo que se pinta aquí sale de este dispositivo: las claves que guarda y
+   la copia local de cada tablero. Ni una petición, y el servidor sigue sin
+   saber que las personas de un club y otro son la misma.                     */
+function clubsHtml(){
+  const gs = Api.grupos ? Api.grupos() : [];
+  const rec = Api.perfilDelDispositivo ? Api.perfilDelDispositivo() : null;
+  return '<div class="stitle">tus clubes</div>'
+    + '<div class="ssub">cada uno es un tablero aparte, con su gente, sus títulos y sus notas. Lo que hagas en uno no se ve en el otro.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:9px;margin-top:15px">'
+    + gs.map((g) => {
+        const st = Api.estadoDeClub(g.group);
+        const c = g.activo ? 'var(--watching)' : 'var(--wish)';
+        const gente = st ? st.users : [];
+        const cuantos = (k) => (st && st.me) ? st.items.filter((i) => i.participants[st.me] && i.participants[st.me].status === k).length : 0;
+        const trozos = [];
+        if (st){
+          const v = cuantos('watching'), w = cuantos('wish');
+          if (v) trozos.push('👀 ' + v + ' a medias');
+          if (w) trozos.push('💭 ' + w + (w === 1 ? ' pendiente' : ' pendientes'));
+        }
+        const resumen = !st ? 'aún no lo has abierto en este dispositivo'
+          : (trozos.length ? trozos.join(' · ') : 'nada apuntado todavía');
+        return '<div class="clubc' + (g.activo ? ' on' : '') + '" style="--c:' + c + ';flex-direction:column;align-items:stretch;gap:0">'
+          + '<button data-a="p.switch:' + encodeURIComponent(g.secret) + '" style="display:flex;align-items:center;gap:11px;text-align:left;width:100%">'
+          + (gente.length
+              ? '<span class="stack">' + gente.slice(0, 3).map((u) => '<span class="av s30" style="--c:' + u.color + '">' + u.emoji + '</span>').join('')
+                  + (gente.length > 3 ? '<span class="av s30" style="--c:var(--text-dim);font-size:11px;font-weight:800">+' + (gente.length - 3) + '</span>' : '')
+                + '</span>'
+              : '<span class="av s30" style="--c:' + c + '">🛋️</span>')
+          + '<span style="flex:1;min-width:0;display:block">'
+          + '<span style="display:block;font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(g.group) + '</span>'
+          + '<span style="display:block;font-size:11.5px;color:var(--text-dim);font-weight:700;margin-top:2px">' + esc(resumen) + '</span></span>'
+          + '<span style="flex:none;font-size:' + (g.activo ? '11.5px' : '15px') + ';font-weight:800;color:' + (g.activo ? c : 'var(--text-dim)') + '">' + (g.activo ? 'aquí estás' : '›') + '</span>'
+          + '</button>'
+          + (gs.length > 1 ? '<button data-a="p.leave:' + encodeURIComponent(g.secret) + '" style="align-self:flex-end;min-height:38px;padding:0 2px;font-size:11px;font-weight:800;color:var(--text-dim)">salir de este club aquí</button>' : '')
+          + '</div>';
+      }).join('')
+    + '</div>'
+    + '<div class="b" style="border-radius:22px;margin-top:12px"><div class="lbl">entrar en otro club</div>'
+    + '<div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-top:8px" class="pretty">'
+    + 'necesitas que alguien de dentro te mande una invitación. Al abrirla entras como alguien nuevo de ese club, con tu propia clave, y este dispositivo se queda con las dos.</div>'
+    + (rec ? '<div class="xclub" style="margin-top:11px"><span class="av s30" style="--c:' + rec.color + '">' + rec.emoji + '</span>'
+        + '<div>te apuntaré como <b>' + esc(rec.name) + '</b> para que no lo teclees otra vez. Podrás cambiarlo allí mismo.</div></div>' : '')
+    + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600;margin-top:13px;text-align:center" class="pretty">'
+    + 'en cada club eres una persona distinta, con su clave. Que sean la misma sólo lo sabe este dispositivo.</div>';
+}
+/* ── hoja: bienvenida ── */
+function welcomeHtml(){
+  const p = S.prof || { name:'', emoji:'🐻', color:PALETTE[0] };
+  return '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0 0">'
+    + '<div class="float">' + mascot(86, p.color) + '</div>'
+    + '<div style="font-weight:800;font-size:24px;letter-spacing:-.5px;margin-top:10px">hola, ¿quién eres?</div>'
+    + '<div style="font-size:14px;color:var(--text-dim);font-weight:600;margin-top:6px;max-width:320px" class="pretty">el club de series y pelis de tu sofá. elige nombre, bicho y color y entra.</div></div>'
+    + (S.profRec ? '<div class="xclub" style="margin-top:14px">✨<div>te he puesto lo mismo que la última vez, para no hacerte teclear. Cámbialo si en este club eres otra persona.</div></div>' : '')
+    + '<input id="wname" class="inp" data-in="pname" value="' + esc(p.name) + '" placeholder="tu nombre" style="height:56px;font-size:17px;font-weight:800;margin-top:18px;text-align:center">'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;justify-content:center">'
+    + EMOJIS.map((e) => '<button class="r44" data-a="p.emoji:' + e + '" style="width:46px;height:46px;font-size:21px;background:' + (p.emoji === e ? soft(p.color, 32) : '#ffffff0d') + '">' + e + '</button>').join('')
+    + '</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;justify-content:center">'
+    + PALETTE.map((h) => '<button class="r44" data-a="p.color:' + encodeURIComponent(h) + '" aria-label="' + h + '" style="background:' + h + ';box-shadow:' + (p.color === h ? '0 0 0 3px var(--surface-2),0 0 0 5px ' + h : 'none') + '"></button>').join('')
+    + '</div>'
+    + '<button class="cta" style="height:56px;font-size:16px;margin-top:18px;background:' + p.color + '" data-a="p.finish">' + (p.name.trim() ? 'entrar como ' + esc(p.name) : 'ponte un nombre primero') + '</button>';
+}
+/* ── ensamblado y pintado ── */
+function sheetHtml(){
+  if (!S.sheet) return '';
+  const k = S.sheet.kind;
+  let inner = '';
+  if (k === 'detail') inner = detailHtml();
+  else if (k === 'add') inner = addHtml();
+  else if (k === 'roulette') inner = rouletteHtml();
+  else if (k === 'stats') inner = statsHtml();
+  else if (k === 'settings') inner = settingsHtml();
+  else if (k === 'clubs') inner = clubsHtml();
+  else if (k === 'welcome') inner = welcomeHtml();
+  else if (k === 'filters') inner = filtersHtml();
+  else if (k === 'confirm') inner = confirmHtml();
+  if (!inner) return '';
+  return '<div class="ov" data-a="close">'
+    + '<div class="sheet" data-sheet style="transform:translateY(' + (S.sheetDy || 0) + 'px)">'
+    + '<div class="handle" data-handle><i></i></div>'
+    + '<div class="scroll">' + inner + '</div></div></div>';
+}
+function view(){
+  if (!S.data) return headerHtml() + bootHtml();
+  const needsWelcome = !S.data.me || !S.data.users.some((u) => u.id === S.data.me);
+  if (needsWelcome && (!S.sheet || S.sheet.kind !== 'welcome')) S.sheet = { kind:'welcome' };
+  if (needsWelcome && !S.prof){
+    const rec = Api.perfilDelDispositivo ? Api.perfilDelDispositivo() : null;
+    S.prof = rec ? { name:rec.name, emoji:rec.emoji, color:rec.color } : { name:'', emoji:'🐻', color:PALETTE[0] };
+    S.profRec = !!rec;
+  }
+  return headerHtml()
+    + (Api.isDemo() ? '<div class="banner">estás en <b>modo demo</b> con datos de ejemplo: nada se guarda. Abre el enlace de tu club para entrar de verdad.</div>' : '')
+    + (Api.authFailed() ? '<div class="banner" style="color:var(--bad);background:color-mix(in oklab,#FF6B8A 14%,var(--surface))">tu clave ya no vale: puede que te hayan sacado del club o que se haya generado otra. Pide un enlace nuevo.</div>' : '')
+    + (S.booting ? bootHtml() : boardHtml())
+    + navHtml()
+    + '<button class="fab desk" data-a="add"><span style="font-size:26px;line-height:1;margin-top:-2px">+</span> Añadir un título</button>'
+    + floatHtml() + sheetHtml();
+}
+let rafPending = false;
+function render(){
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    const root = document.getElementById('app');
+    const act = document.activeElement;
+    const fid = act && act.id ? act.id : null;
+    const ss = fid ? act.selectionStart : null, se = fid ? act.selectionEnd : null;
+    document.documentElement.setAttribute('data-theme', S.theme === 'malva' ? '' : S.theme);
+    root.innerHTML = view();
+    if (fid){
+      const el = document.getElementById(fid);
+      if (el && el !== document.activeElement){
+        el.focus({ preventScroll:true });
+        try { if (ss != null) el.setSelectionRange(ss, se); } catch(e){}
+      }
+    }
+  });
+}
+
+/* ── acciones ── */
+function openDetail(key){ setS({ sheet:{ kind:'detail', key:key }, sheetDy:0, noteDraft:'' }); }
+function openAdd(){ setS({ sheet:{ kind:'add' }, sheetDy:0, addQ:'', addResults:null, addPick:null, addSearching:false });
+  setTimeout(() => { const el = document.getElementById('addi'); if (el) el.focus(); }, 140); }
+function openSettings(){
+  const me = user(meId());
+  setS({ sheet:{ kind:'settings' }, sheetDy:0, invite:null, saveState:'idle', inviteState:'idle', copyState:'idle',
+    profRec:false, prof:{ name:me.name === '¿?' ? '' : me.name, emoji:me.emoji, color:me.color } });
+}
+function openRoulette(){
+  setS({ sheet:{ kind:'roulette' }, sheetDy:0,
+    roul:{ users:[meId()], time:null, kind:'both', provs:[], spinning:false, result:null, frame:null, nothing:false, last:(S.roul && S.roul.last) || null } });
+}
+const closeSheet = () => setS({ sheet:null, sheetDy:0, confirmAsk:null });
+
+function move(key, to, rect){
+  const k = parseKey(key), it = findItem(k.itemId); if (!it) return;
+  const users = groupUsers(it, k.status, k.order);
+  if (to === 'done' && rect) rain(rect);
+  flash([k.itemId + '|' + to], 'land');
+  call(() => Api.setStatus(k.itemId, users, to), it.title + ' → ' + COL(to).label);
+  if (S.isMobile && S.tab !== to) setS({ tab:to });
+}
+function shift(key, dir, rect){
+  const flow = ['wish','watching','done'];
+  const st = parseKey(key).status;
+  const i = flow.indexOf(st);
+  if (i < 0){ move(key, dir > 0 ? 'watching' : 'wish', rect); return; }
+  const j = clamp(i + dir, 0, flow.length - 1);
+  if (j === i){ toast(dir > 0 ? 'ya está en Terminado 🎉' : 'no hay nada antes de Nos apetece'); return; }
+  move(key, flow[j], rect);
+}
+function bumpProgress(itemId, users, dir, rect){
+  const it = findItem(itemId); if (!it) return;
+  const p = it.participants[users[0]]; if (!p) return;
+  const next = step(it, p.progress, dir);
+  if (next === 'end'){
+    if (rect) rain(rect);
+    call(() => Api.setStatus(itemId, users, 'done'), it.title + ' terminada');
+    toast('¡' + it.title + ' terminada! ✨ ponedle nota cuando queráis');
+    return;
+  }
+  call(() => Api.setProgress(itemId, users, next));
+}
+function confirmYes(){
+  const a = S.confirmAsk; if (!a) return;
+  setS({ sheet:null, confirmAsk:null });
+  if (a.kind === 'del'){
+    setS({ pendingDel:a.itemId });
+    const t = setTimeout(() => { setS({ pendingDel:null }); call(() => Api.removeItem(a.itemId)); }, 6000);
+    toast('«' + a.title + '» fuera del tablero', 'deshacer', () => { clearTimeout(t); setS({ pendingDel:null, toast:null }); });
+  } else if (a.kind === 'user'){
+    call(() => Api.removeUser(a.userId), 'ya no está en el tablero');
+  } else if (a.kind === 'leave'){
+    Api.salirDeClub(a.secret);
+  }
+}
+let searchDeb = null, searchAC = null;
+function onSearchInput(q){
+  S.addQ = q; S.addPick = null;
+  clearTimeout(searchDeb);
+  if (searchAC) searchAC.abort();
+  if (!q.trim()){ setS({ addResults:null, addSearching:false }); return; }
+  setS({ addSearching:true });
+  searchDeb = setTimeout(() => {
+    searchAC = new AbortController();
+    Api.searchTitles(q, { signal:searchAC.signal })
+      .then((r) => setS({ addResults:r, addSearching:false }))
+      .catch((err) => { if (err.name !== 'AbortError'){ setS({ addSearching:false, addResults:[] }); if (err.code === 'no-tmdb') toast('falta la clave de TMDB'); } });
+  }, 240);
+}
+let spinT = null;
+function spin(){
+  const cands = candidates();
+  const r = Object.assign({}, S.roul);
+  const pool = cands.length > 1 ? cands.filter((c) => c.item.id !== r.last) : cands;
+  if (!pool.length){ setS({ roul:Object.assign(r, { spinning:false, result:null, nothing:true }) }); return; }
+  let total = pool.reduce((a, c) => a + c.w, 0), pick = Math.random() * total, chosen = pool[0];
+  for (const c of pool){ pick -= c.w; if (pick <= 0){ chosen = c; break; } }
+  setS({ roul:Object.assign(r, { spinning:true, result:null, nothing:false, frame:Api.imageUrl(pool[0].item.poster, 'lg') }) });
+  let i = 0;
+  clearInterval(spinT);
+  spinT = setInterval(() => { i++; setS({ roul:Object.assign({}, S.roul, { frame:Api.imageUrl(pool[i % pool.length].item.poster, 'lg') }) }); }, 95);
+  setTimeout(() => {
+    clearInterval(spinT);
+    setS({ roul:Object.assign({}, S.roul, { spinning:false, result:chosen.item.id, last:chosen.item.id, weight:chosen.w }) });
+    buzz(14);
+  }, 1750);
+}
+async function saveProfile(finish){
+  const p = S.prof;
+  if (!p || !p.name.trim()){ toast(finish ? 'ponte un nombre, aunque sea inventado' : 'ponle un nombre, aunque sea inventado'); return; }
+  /* con una invitación en la mano, entrar significa canjearla: el Worker crea tu
+     persona y te devuelve TU secreto, distinto del de todos los demás */
+  if (finish && Api.hayInvitacion()){
+    setS({ saveState:'saving' });
+    try {
+      await Api.unirse(p);
+      closeSheet();
+      toast('bienvenida/o al club, ' + p.name + ' ' + p.emoji);
+    } catch(e){
+      setS({ saveState:'idle' });
+      toast(e.code === 'invitacion-invalida'
+        ? 'esa invitación ya se usó o ha caducado. Pide otra 🙈'
+        : 'no he podido entrar (・_・;) ¿probamos otra vez?', 'reintentar', () => saveProfile(true));
+    }
+    return;
+  }
+  if (finish) closeSheet(); else setS({ saveState:'saving' });
+  const r = await call(() => Api.updateProfile(p), 'perfil guardado');
+  if (r === null){ setS({ saveState:'idle' }); return; }
+  if (!finish){ setS({ saveState:'done' }); setTimeout(() => setS({ saveState:'idle' }), 2000); }
+  toast((finish ? 'bienvenida/o, ' : 'perfil guardado: ') + p.name + ' ' + p.emoji);
+}
+async function copyInvite(){
+  const txt = S.invite;
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch(e){
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); document.body.removeChild(ta);
+    } catch(e2){ ok = false; }
+  }
+  if (ok){ setS({ copyState:'done' }); toast('enlace copiado al portapapeles 💌'); setTimeout(() => setS({ copyState:'idle' }), 2200); }
+  else toast('cópialo a mano de ahí arriba, el navegador no me deja tocar el portapapeles');
+}
+/* ── eventos delegados ── */
+let blockClick = 0;
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const raw = el.dataset.a;
+  const i = raw.indexOf(':');
+  const verb = i < 0 ? raw : raw.slice(0, i);
+  const arg = i < 0 ? null : raw.slice(i + 1);
+
+  if (verb === 'close'){ if (e.target.closest('.sheet')) return; closeSheet(); return; }
+  if (Date.now() - blockClick < 320 && el.closest('[data-card]')) return;
+  e.stopPropagation();
+
+  const cardEl = el.closest('[data-card]');
+  const ck = cardEl && parseKey(cardEl.dataset.card);
+  const it = ck && findItem(ck.itemId);
+  const users = it ? groupUsers(it, ck.status, ck.order) : [];
+  const rect = cardEl ? cardEl.getBoundingClientRect() : null;
+  const me = meId();
+
+  switch (verb){
+    /* cabecera y navegación */
+    case 'sync': if (Api.isDemo()) toast('esto es la demo: abre el enlace con las claves para conectar vuestro tablero'); else Api.retry(); break;
+    case 'filters': setS({ sheet:{ kind:'filters' }, fd:Object.assign({}, S.f), sheetDy:0 }); break;
+    case 'roulette': openRoulette(); break;
+    case 'stats': setS({ sheet:{ kind:'stats' }, sheetDy:0 }); break;
+    case 'settings': openSettings(); break;
+    case 'add': openAdd(); break;
+    case 'tab': setS({ tab:arg }); break;
+    case 'collapse': if (arg === 'dropped' && !S.isMobile) setS({ collapsed:!S.collapsed }); break;
+    case 'nav':
+      if (arg === 'board') closeSheet();
+      else if (arg === 'add') openAdd();
+      else if (arg === 'roulette') openRoulette();
+      else if (arg === 'stats') setS({ sheet:{ kind:'stats' }, sheetDy:0 });
+      else if (arg === 'settings') openSettings();
+      break;
+    case 'toastact': { const t = S.toast; if (t && t.action) t.action(); setS({ toast:null }); break; }
+    case 'confirmyes': confirmYes(); break;
+    case 'theme': S.theme = arg; try { localStorage.setItem(LS.theme, arg); } catch(err){} render(); break;
+
+    /* quitar filtros */
+    case 'rm': {
+      const parts = arg.split(':'), what = parts[0], v = parts[1];
+      if (what === 'all'){ setS({ q:'', f:Object.assign({}, F0), fd:null }); break; }
+      if (what === 'q'){ setS({ q:'' }); break; }
+      const f = Object.assign({}, S.f, { provs:S.f.provs.slice(), by:S.f.by.slice(), who:S.f.who.slice() });
+      if (what === 'type') f.type = null;
+      else if (what === 'avail') f.avail = false;
+      else if (what === 'hype') f.hypeUser = null;
+      else if (what === 'who') f.who = f.who.filter((x) => x !== v);
+      else if (what === 'prov') f.provs = f.provs.filter((x) => x !== v);
+      else if (what === 'by') f.by = f.by.filter((x) => x !== v);
+      setS({ f:f, fd:null });
+      break;
+    }
+
+    /* tarjeta */
+    case 'hype': call(() => Api.setHype(ck.itemId, me, +arg)); break;
+    case 'plus': bumpProgress(ck.itemId, users, 1, rect); break;
+    case 'minus': bumpProgress(ck.itemId, users, -1, rect); break;
+    case 'rplus': bumpProgress(ck.itemId, arg.split(','), 1, rect); break;
+    case 'rminus': bumpProgress(ck.itemId, arg.split(','), -1, rect); break;
+    case 'seen': move(cardEl.dataset.card, 'done', rect); break;
+    case 'open': openDetail(cardEl.dataset.card); break;
+
+    /* detalle */
+    case 'd.to': {
+      const k = parseKey(S.sheet.key);
+      flash([k.itemId + '|' + arg], 'land');
+      call(() => Api.setStatus(k.itemId, [me], arg), 'te he movido a ' + COL(arg).label);
+      setTimeout(() => { const x = findItem(k.itemId); const p = x && x.participants[me];
+        if (p) setS({ sheet:{ kind:'detail', key:k.itemId + '|' + p.status + '|' + p.order } }); }, 30);
+      break;
+    }
+    case 'd.rate': {
+      const k = parseKey(S.sheet.key);
+      call(() => Api.setRating(k.itemId, me, +arg));
+      S.pop = +arg; render(); setTimeout(() => { S.pop = null; render(); }, 320);
+      break;
+    }
+    case 'd.ep': { const k = parseKey(S.sheet.key); bumpProgress(k.itemId, [me], +arg, null); break; }
+    case 'd.solo': {
+      const k = parseKey(S.sheet.key), x = findItem(k.itemId);
+      flash([S.sheet.key], 'split');
+      call(() => Api.splitOut(k.itemId, me), 'a tu ritmo, sin prisa');
+      toast('vas por tu cuenta en ' + x.title + ' 🚶 tu tarjeta se ha separado');
+      closeSheet();
+      break;
+    }
+    case 'd.join': {
+      const k = parseKey(S.sheet.key), x = findItem(k.itemId);
+      const tp = x.participants[arg], target = user(arg);
+      flash([k.itemId + '|' + tp.status + '|' + tp.order], 'join');
+      call(() => Api.joinUsers(k.itemId, me, arg), 'te has unido a ' + target.name);
+      toast('te uniste a ' + target.name + ' ' + target.emoji + ' en ' + x.title);
+      setS({ sheet:{ kind:'detail', key:k.itemId + '|' + tp.status + '|' + tp.order } });
+      break;
+    }
+    case 'd.del': {
+      const k = parseKey(S.sheet.key), x = findItem(k.itemId);
+      setS({ confirmAsk:{ kind:'del', itemId:k.itemId, title:x.title }, sheet:{ kind:'confirm' } });
+      break;
+    }
+    case 'd.note': { const k = parseKey(S.sheet.key); call(() => Api.removeNote(k.itemId, arg)); break; }
+    case 'd.send': {
+      const t = S.noteDraft.trim(); if (!t) break;
+      const k = parseKey(S.sheet.key);
+      setS({ noteDraft:'' });
+      call(() => Api.addNote(k.itemId, t), 'nota guardada');
+      break;
+    }
+
+    /* añadir */
+    case 'a.pick': {
+      const r = (S.addResults || []).find((x) => x.tmdbId === +arg);
+      const have = S.data.items.find((x) => x.tmdbId === +arg);
+      if (have && have.participants[me]){ toast('ya lo tienes en ' + COL(have.participants[me].status).label); break; }
+      if (have){
+        const other = Object.keys(have.participants)[0], p = have.participants[other];
+        flash([have.id + '|' + p.status + '|' + p.order], 'join');
+        call(() => Api.joinUsers(have.id, me, other), 'te has unido');
+        toast('te uniste a ' + user(other).name + ' en ' + have.title + ' 🤝');
+        closeSheet();
+        break;
+      }
+      setS({ addPick:Object.assign({}, r, { status:'wish', hype:2 }) });
+      break;
+    }
+    case 'a.col': setS({ addPick:Object.assign({}, S.addPick, { status:arg }) }); break;
+    case 'a.hype': setS({ addPick:Object.assign({}, S.addPick, { hype:+arg }) }); break;
+    case 'a.confirm': {
+      const p = S.addPick; if (!p) break;
+      closeSheet();
+      if (S.isMobile) setS({ tab:p.status });
+      call(() => Api.addItem({ tmdbId:p.tmdbId, type:p.type, status:p.status, hype:p.hype }), p.title + ' añadida');
+      toast(p.title + ' → ' + COL(p.status).label + ' ✨');
+      break;
+    }
+
+    /* filtros */
+    case 'f.clear': setS({ fd:Object.assign({}, F0), q:'' }); break;
+    case 'f.apply': setS({ f:S.fd || S.f, fd:null, sheet:null }); say('filtros aplicados'); break;
+    default: {
+      if (verb.indexOf('f.') === 0){
+        const f = Object.assign({}, S.fd || S.f);
+        f.provs = f.provs.slice(); f.by = f.by.slice(); f.who = f.who.slice();
+        const tog = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : arr.concat([v]);
+        const w = verb.slice(2);
+        if (w === 't') f.type = f.type === arg ? null : arg;
+        else if (w === 'mine') f.who = (f.who.length === 1 && f.who[0] === me) ? [] : [me];
+        else if (w === 'who') f.who = tog(f.who, arg);
+        else if (w === 'avail') f.avail = !f.avail;
+        else if (w === 'prov') f.provs = tog(f.provs, arg);
+        else if (w === 'hu') f.hypeUser = f.hypeUser === arg ? null : arg;
+        else if (w === 'hm'){ f.hypeMin = +arg; if (!f.hypeUser) f.hypeUser = 'any'; }
+        else if (w === 'by') f.by = tog(f.by, arg);
+        setS({ fd:f });
+        break;
+      }
+      if (verb.indexOf('r.') === 0){
+        const r = Object.assign({}, S.roul);
+        const w = verb.slice(2);
+        if (w === 'user') r.users = r.users.includes(arg) ? r.users.filter((u) => u !== arg) : r.users.concat([arg]);
+        else if (w === 'time') r.time = r.time === +arg ? null : (+arg || null);
+        else if (w === 'kind') r.kind = arg;
+        else if (w === 'prov') r.provs = r.provs.includes(arg) ? r.provs.filter((p) => p !== arg) : r.provs.concat([arg]);
+        else if (w === 'spin'){ spin(); break; }
+        else if (w === 'accept'){
+          const x = findItem(S.roul.result); if (!x) break;
+          const us = S.roul.users.filter((u) => x.participants[u]);
+          closeSheet();
+          if (S.isMobile) setS({ tab:'watching' });
+          flash([x.id + '|watching'], 'land');
+          call(() => Api.setStatus(x.id, us, 'watching'), 'a verla');
+          toast('¡' + x.title + ' esta noche! 🍿');
+          break;
+        }
+        setS({ roul:r });
+        break;
+      }
+      if (verb === 's.scope'){ setS({ statScope:arg }); break; }
+      if (verb === 's.year'){ setS({ statYear:arg }); break; }
+      if (verb.indexOf('p.') === 0){
+        const w = verb.slice(2), p = S.prof || {};
+        if (w === 'emoji') setS({ prof:Object.assign({}, p, { emoji:arg }) });
+        else if (w === 'color') setS({ prof:Object.assign({}, p, { color:decodeURIComponent(arg) }) });
+        else if (w === 'save') saveProfile(false);
+        else if (w === 'finish') saveProfile(true);
+        else if (w === 'welcome') setS({ sheet:{ kind:'welcome' }, sheetDy:0, profRec:false, prof:{ name:'', emoji:'🐻', color:PALETTE[0] } });
+        else if (w === 'rmuser') setS({ confirmAsk:{ kind:'user', userId:arg, name:user(arg).name }, sheet:{ kind:'confirm' } });
+        else if (w === 'copy') copyInvite();
+        else if (w === 'forget') Api.olvidarDispositivo();
+        else if (w === 'clubs') setS({ sheet:{ kind:'clubs' }, sheetDy:0 });
+        else if (w === 'switch'){
+          const s = decodeURIComponent(arg);
+          if (Api.grupos().some((g) => g.secret === s && g.activo)) closeSheet();
+          else Api.cambiarGrupo(s);
+        }
+        else if (w === 'leave'){
+          const s = decodeURIComponent(arg);
+          setS({ confirmAsk:{ kind:'leave', secret:s, group:grupoDe(s) }, sheet:{ kind:'confirm' } });
+        }
+        else if (w === 'invite'){
+          if (S.inviteState === 'making') break;
+          setS({ inviteState:'making' });
+          call(() => Api.createInvite()).then((url) => {
+            if (!url){ setS({ inviteState:'idle' }); return; }
+            setS({ invite:url, inviteState:'ready', copyState:'idle' });
+            toast('invitación lista 💌 cópiala y mándala');
+          });
+        }
+        break;
+      }
+    }
+  }
+});
+
+document.addEventListener('input', (e) => {
+  const el = e.target.closest('[data-in]'); if (!el) return;
+  const k = el.dataset.in;
+  if (k === 'q'){ S.q = el.value; render(); }
+  else if (k === 'note'){ S.noteDraft = el.value; }
+  else if (k === 'add') onSearchInput(el.value);
+  else if (k === 'pname'){ S.prof = Object.assign({}, S.prof, { name:el.value }); render(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && S.sheet) closeSheet();
+  if (e.key === 'Enter' && e.target && e.target.dataset && e.target.dataset.in === 'note'){
+    const t = S.noteDraft.trim(); if (!t) return;
+    const k = parseKey(S.sheet.key);
+    setS({ noteDraft:'' });
+    call(() => Api.addNote(k.itemId, t), 'nota guardada');
+  }
+});
+
+/* ── gestos (Pointer Events, ratón y dedo con el mismo código) ── */
+let G = null, lpT = null, moved = false;
+function detach(){ window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp); }
+function endGesture(){ clearTimeout(lpT); detach(); G = null; if (S.swipe || S.drag || S.dock) setS({ swipe:null, drag:null, dock:null }); }
+document.addEventListener('pointerdown', (e) => {
+  const handle = e.target.closest('[data-handle]');
+  if (handle){
+    const y0 = e.clientY;
+    const mv = (ev) => setS({ sheetDy:Math.max(0, ev.clientY - y0) });
+    const up = (ev) => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+      if (Math.max(0, ev.clientY - y0) > 90) closeSheet(); else setS({ sheetDy:0 }); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+    return;
+  }
+  const cardEl = e.target.closest('[data-card]');
+  if (cardEl){
+    if (e.button > 0 || e.target.closest('[data-a]')) return;
+    G = { key:cardEl.dataset.card, x0:e.clientX, y0:e.clientY, r:cardEl.getBoundingClientRect(), mode:null };
+    moved = false;
+    window.addEventListener('pointermove', onMove, { passive:false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    if (S.isMobile){
+      lpT = setTimeout(() => {
+        if (!G || G.mode) return;
+        G.mode = 'dock'; moved = true; buzz(12);
+        setS({ dock:{ key:G.key, over:null } });
+      }, 350);
+    }
+    return;
+  }
+  /* deslizar el fondo cambia de pestaña */
+  const board = e.target.closest('[data-board]');
+  if (board && S.isMobile && !e.target.closest('[data-a]')){
+    const x0 = e.clientX, y0 = e.clientY; let done = false;
+    const mv = (ev) => {
+      if (done) return;
+      const dx = ev.clientX - x0, dy = ev.clientY - y0;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4){
+        done = true;
+        const i = CK.indexOf(S.tab), j = clamp(i + (dx < 0 ? 1 : -1), 0, CK.length - 1);
+        if (j !== i){ setS({ tab:CK[j] }); buzz(6); }
+        up();
+      }
+    };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', mv, { passive:true });
+    window.addEventListener('pointerup', up);
+  }
+});
+function onMove(e){
+  if (!G) return;
+  const dx = e.clientX - G.x0, dy = e.clientY - G.y0;
+  if (!G.mode){
+    if (Math.abs(dx) < 9 && Math.abs(dy) < 9) return;
+    clearTimeout(lpT);
+    if (!S.isMobile){
+      G.mode = 'drag';
+      const k = parseKey(G.key), it = findItem(k.itemId); if (!it){ endGesture(); return; }
+      const us = groupUsers(it, k.status, k.order), c = COL(k.status).v;
+      setS({ drag:{ key:G.key, w:G.r.width, x:G.r.left, y:G.r.top, ox:G.x0 - G.r.left, oy:G.y0 - G.r.top,
+        over:k.status, c:c, title:it.title, ini:it.title.slice(0, 2).toUpperCase(),
+        who: us.map((u) => user(u).emoji).join(' ') + ' ' + (us.length > 1 ? us.length + ' personas' : user(us[0]).name) } });
+    }
+    else if (Math.abs(dx) > Math.abs(dy) * 1.25) G.mode = 'swipe';
+    else { endGesture(); return; }
+  }
+  moved = true;
+  if (G.mode === 'swipe'){ e.preventDefault(); setS({ swipe:{ key:G.key, dx:clamp(dx, -150, 150) } }); }
+  else if (G.mode === 'drag'){
+    e.preventDefault();
+    let over = null;
+    document.querySelectorAll('[data-col]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right) over = el.dataset.col;
+    });
+    setS({ drag:Object.assign({}, S.drag, { x:e.clientX - S.drag.ox, y:e.clientY - S.drag.oy, over:over || S.drag.over }) });
+  }
+  else if (G.mode === 'dock'){
+    e.preventDefault();
+    let over = null;
+    document.querySelectorAll('[data-dockt]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (e.clientX >= r.left - 4 && e.clientX <= r.right + 4 && e.clientY >= r.top - 30) over = el.dataset.dockt;
+    });
+    if (over !== S.dock.over){ if (over) buzz(6); setS({ dock:Object.assign({}, S.dock, { over:over }) }); }
+  }
+}
+function onUp(){
+  if (!G){ endGesture(); return; }
+  const mode = G.mode, key = G.key, r = G.r;
+  const sw = S.swipe, dg = S.drag, dk = S.dock;
+  clearTimeout(lpT); detach(); G = null;
+  if (mode === 'swipe' && sw){
+    const dir = sw.dx > 80 ? 1 : sw.dx < -80 ? -1 : 0;
+    setS({ swipe:null });
+    if (dir){ buzz(10); shift(key, dir, r); }
+  } else if (mode === 'drag' && dg){
+    setS({ drag:null });
+    if (dg.over && dg.over !== parseKey(key).status) move(key, dg.over, r);
+  } else if (mode === 'dock' && dk){
+    setS({ dock:null });
+    if (dk.over && dk.over !== parseKey(key).status){ buzz(10); move(key, dk.over, r); }
+  } else {
+    endGesture();
+    if (!moved) openDetail(key);
+  }
+  if (moved) blockClick = Date.now();
+}
+window.addEventListener('resize', () => {
+  const m = window.innerWidth < 900;
+  if (m !== S.isMobile) setS({ isMobile:m });
+});
+
+/* ── arranque ── */
+(async function boot(){
+  try { S.theme = localStorage.getItem(LS.theme) || 'neon'; } catch(e){ S.theme = 'neon'; }
+  const cfg = readConfig();
+  Api = createApi(cfg);
+  Api.subscribe((data) => { S.data = data; S.sync = Api.getSyncStatus(); render(); });
+  render();
+  await Api.boot();
+  S.data = Api.getState(); S.sync = Api.getSyncStatus();
+  setTimeout(() => setS({ booting:false }), 700);
+})();
+</script>
+</body>
+</html>

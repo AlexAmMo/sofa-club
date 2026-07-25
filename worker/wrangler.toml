@@ -1,0 +1,21 @@
+name = "sofa-club"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# El repositorio PRIVADO donde viven los datos (data/<club>.json).
+# Ojo: no es el repo público de la app. El token sólo alcanza a éste.
+REPO = "AlexAmMo/sofa-club-data"
+BRANCH = "main"
+# La URL de la app, para construir los enlaces de invitación.
+APP_URL = "https://alexammo.github.io/sofa-club/"
+# Orígenes que pueden llamar al Worker. Separados por comas si hay varios.
+# EN MINÚSCULAS, siempre: esto se compara letra a letra contra la cabecera
+# Origin que manda el navegador, y el navegador la manda siempre en minúsculas.
+# Con una mayúscula aquí, CORS bloquea todo y la app abre pero no guarda nada.
+APP_ORIGIN = "https://alexammo.github.io"
+
+# Los tres secretos NO van aquí. Se ponen con:
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler secret put TMDB_TOKEN
+#   npx wrangler secret put ADMIN_KEY

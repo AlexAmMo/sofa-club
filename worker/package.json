@@ -1,0 +1,5 @@
+{
+  "name": "sofa-club-worker",
+  "private": true,
+  "type": "module"
+}

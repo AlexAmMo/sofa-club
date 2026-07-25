@@ -1,0 +1,15 @@
+# nada de secretos en el repo, nunca
+.env
+.env.*
+*.local
+*.local.*
+.dev.vars
+worker/.dev.vars
+worker/node_modules/
+node_modules/
+.wrangler/
+
+# artefactos de pruebas locales
+chk.js
+*.bak
+.playwright-mcp/

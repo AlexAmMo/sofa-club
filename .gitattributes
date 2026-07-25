@@ -1,0 +1,5 @@
+# El hash de la CSP se calcula sobre el contenido EXACTO del bloque de script de
+# index.html. Si git convierte los finales de línea al clonar o al servir, el
+# hash deja de cuadrar y la página no arranca, sin más pista que una pantalla en
+# blanco. Así que aquí no se convierte nada.
+* -text
