@@ -25,6 +25,9 @@ http.createServer((req, res) => {
   const destino = path.resolve(RAIZ, rel);
   /* no salirse de la carpeta, ni siquiera en un servidor de juguete */
   if (!destino.startsWith(RAIZ)){ res.writeHead(403); return res.end('fuera'); }
+  /* ni servir .git ni ningún oculto: esto puede acabar detrás de un túnel
+     público, y entonces «es sólo local» deja de ser cierto */
+  if (rel.split(/[\\/]/).some((t) => t.startsWith('.'))){ res.writeHead(403); return res.end('no'); }
   fs.readFile(destino, (e, datos) => {
     if (e){ res.writeHead(404, { 'Content-Type':'text/plain; charset=utf-8' }); return res.end('no está: ' + rel); }
     res.writeHead(200, {
