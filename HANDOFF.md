@@ -395,6 +395,13 @@ sin errores de consola, sin scroll horizontal a 390 px y con las zonas pulsables
 - **En PowerShell, `curl` no es curl** — es `Invoke-WebRequest` disfrazado. Hay que escribir
   `curl.exe`. Y mandar JSON por `-d` desde PowerShell es una fuente de disgustos con las comillas:
   para eso está `Invoke-RestMethod`, que no tiene el problema.
+- **El alto de las hojas no se mide en `vh`, y hay motivo.** `100vh` es el viewport **grande**, el de
+  la barra de URL escondida, mientras que `.ov` ocupa el visible. Con `92vh` la hoja podía pedir más
+  alto del que había y, al estar pegada abajo con `align-items:flex-end`, desbordaba **hacia arriba**:
+  el borde superior, el tirador y el botón de cerrar se salían de la pantalla. Ahora es
+  `min(92dvh,92%)` — `dvh` sigue al viewport visible y el `%` se mide contra el propio contenedor —
+  y `.ov` reserva arriba el hueco de la muesca. Volver a `vh` reabre el recorte, y sólo se ve en un
+  móvil de verdad: en el navegador de escritorio no pasa nunca.
 - **Los envoltorios de zona (`.rgn`) llevan `display:contents` y no es decorativo.** Si alguno pasa a
   generar caja, la cabecera `sticky` se queda pegada a un contenedor de su propia altura y deja de
   funcionar, sin ningún error por ninguna parte.

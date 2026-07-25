@@ -238,9 +238,18 @@ nav button.pri i{font-size:25px}
 .conf{position:fixed;z-index:80;pointer-events:none}
 
 /* ═══════════ HOJAS ═══════════ */
+/* el hueco de arriba respeta la muesca: si no, con la hoja al máximo el tirador
+   se metía debajo del reloj */
 .ov{position:fixed;inset:0;z-index:100;background:#0A0812b8;backdrop-filter:blur(3px);
-  display:flex;align-items:flex-end;justify-content:center;padding:0}
-.sheet{position:relative;background:var(--surface-2);width:100%;max-width:100%;max-height:92vh;border-radius:28px 28px 0 0;
+  display:flex;align-items:flex-end;justify-content:center;padding:env(safe-area-inset-top) 0 0}
+/* «92vh» se mide contra el viewport GRANDE, el de la barra de URL escondida,
+   mientras que .ov ocupa sólo el visible. En el móvil eso significaba que la
+   hoja podía pedir más alto del que había y, al estar pegada abajo, desbordaba
+   HACIA ARRIBA: el borde superior, el tirador y el botón de cerrar se salían de
+   la pantalla. «dvh» sigue al viewport visible y el «%» se mide contra este
+   mismo contenedor; se coge el menor de los dos y ya no se sale por ningún lado. */
+.sheet{position:relative;background:var(--surface-2);width:100%;max-width:100%;
+  max-height:92vh;max-height:min(92dvh,92%);border-radius:28px 28px 0 0;
   display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -20px 60px -20px #000e;
   will-change:transform;transition:transform .2s var(--spring)}
 /* la entrada se anima sólo al abrir la hoja, no cada vez que cambia algo dentro:
@@ -251,13 +260,13 @@ nav button.pri i{font-size:25px}
 .handle i{width:44px;height:5px;border-radius:999px;background:#ffffff2b;display:block}
 /* cerrar / volver: hasta ahora sólo se salía tocando fuera o arrastrando la
    barrita, y en un móvil eso no lo encuentra nadie */
-.xsheet{position:absolute;top:6px;right:8px;z-index:2;width:44px;height:44px;border-radius:999px;
+.xsheet{position:absolute;top:9px;right:9px;z-index:2;width:44px;height:44px;border-radius:999px;
   display:grid;place-items:center;font-size:22px;font-weight:800;color:var(--text-dim);line-height:1}
 .xsheet:active{background:#ffffff12}
 .scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:6px 18px calc(24px + env(safe-area-inset-bottom))}
 @media (min-width:900px){
   .ov{align-items:center;padding:28px}
-  .sheet{max-width:620px;max-height:88vh;border-radius:28px}
+  .sheet{max-width:620px;max-height:88vh;max-height:min(88dvh,100%);border-radius:28px}
 }
 .stitle{font-weight:800;font-size:20px;letter-spacing:-.3px}
 .ssub{font-size:13px;color:var(--text-dim);font-weight:600;margin-top:4px;text-wrap:pretty}
