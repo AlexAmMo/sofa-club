@@ -1,0 +1,345 @@
+<!-- @dsCard group="Componentes" -->
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cabecera y navegación</title><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap"><style>
+/* ═══════════ TOKENS ═══════════ */
+:root{
+  --bg:#171425; --surface:#221D33; --surface-2:#2C2542; --text:#F2EDFF; --text-dim:#A79DC4;
+  --wish:#FFE08A; --watching:#FF8FD0; --done:#7EF0D2; --dropped:#B79CFF;
+  --spring:cubic-bezier(.34,1.56,.64,1); --ink:#1B1626; --bad:#FF6B8A;
+}
+[data-theme="cielo"]{ --bg:#101527; --surface:#1A2038; --surface-2:#242C48; --text:#EAF0FF; --text-dim:#94A3C4;
+  --wish:#A8C7FF; --watching:#C9B0FF; --done:#9BE7C4; --dropped:#F0A8C0; }
+[data-theme="ciruela"]{ --bg:#221820; --surface:#2E2129; --surface-2:#3A2A34; --text:#FFF1E8; --text-dim:#C4A79B;
+  --wish:#FFC49B; --watching:#FF9A8B; --done:#A8D5B0; --dropped:#D9B8A0; }
+[data-theme="neon"]{ --bg:#0A0910; --surface:#14121F; --surface-2:#1E1B2E; --text:#FFFFFF; --text-dim:#8B85A8;
+  --wish:#FFD84D; --watching:#FF4FA3; --done:#3DF5D0; --dropped:#8B5CF6; }
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg)}
+body{font-family:Nunito,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;text-align:inherit}
+input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--wish);outline-offset:3px;border-radius:8px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#ffffff1f;border-radius:999px;border:3px solid transparent;background-clip:content-box}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+/* zonas de pintado: no generan caja, así que la cabecera pegajosa y el tablero
+   se comportan como si fueran hijos directos de #app, que es lo que eran */
+.rgn{display:contents}
+
+/* ═══════════ ÁTOMOS ═══════════ */
+.b{background:var(--surface);border-radius:20px;padding:15px}
+.lbl{font-size:11.5px;font-weight:800;color:var(--text-dim)}
+.lbl-u{font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:.6px;text-transform:uppercase}
+.dim{color:var(--text-dim)}
+.face{font-family:ui-monospace,monospace}
+.pretty{text-wrap:pretty}
+.r44{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;flex:none}
+.pill{height:44px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:800;
+  display:flex;align-items:center;gap:8px;background:#ffffff0d;color:var(--text-dim)}
+.pill.on{background:color-mix(in oklab,var(--c) 20%,transparent);color:var(--c);
+  box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--c) 50%,transparent)}
+.av{border-radius:999px;display:grid;place-items:center;flex:none;
+  background:color-mix(in oklab,var(--c) 70%,transparent);width:26px;height:26px;font-size:13px}
+.av.s34{width:34px;height:34px;font-size:17px}
+.av.s30{width:30px;height:30px;font-size:15px}
+.av.s38{width:38px;height:38px;font-size:19px}
+.av.s52{width:52px;height:52px;font-size:26px}
+.bar{height:7px;border-radius:999px;background:#ffffff14;margin-top:6px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:999px;background:var(--c);transition:width .3s var(--spring)}
+.bar.sm{height:5px;margin-top:4px}
+.inp{height:52px;border-radius:999px;background:#ffffff0f;border:0;outline:none;padding:0 16px;
+  font-size:15.5px;font-weight:700;width:100%;min-width:0}
+.cta{width:100%;height:52px;border-radius:999px;background:var(--watching);color:var(--ink);
+  font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s ease}
+.clubc{width:100%;background:var(--surface);border-radius:22px;padding:13px 14px;display:flex;
+  align-items:center;gap:12px;text-align:left}
+.clubc.on{background:color-mix(in oklab,var(--c) 11%,var(--surface));
+  box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--c) 42%,transparent)}
+.stack{display:flex;flex:none}
+.stack>span{margin-left:-9px;box-shadow:0 0 0 2.5px var(--surface-2)}
+.stack>span:first-child{margin-left:0}
+/* pista de otro club: información que sólo tiene este móvil, dicha bajito */
+.xclub{display:flex;align-items:flex-start;gap:9px;background:#ffffff0a;border-radius:16px;
+  padding:10px 12px;font-size:12.5px;font-weight:700;color:var(--text-dim);line-height:1.45;text-wrap:pretty}
+.xclub b{font-weight:800;color:var(--text)}
+
+/* ═══════════ CABECERA ═══════════ */
+header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 84%,transparent);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:calc(10px + env(safe-area-inset-top)) 14px 6px}
+.hrow{display:flex;align-items:center;gap:12px;max-width:1500px;margin:0 auto}
+.htitle{font-weight:800;font-size:19px;line-height:1.15;letter-spacing:-.2px}
+.hsync{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-dim);line-height:1.3;position:relative;min-width:0}
+/* pase lo que pase con el texto, esta línea no se parte en dos: recorta */
+.hsync span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hsync::after{content:'';position:absolute;left:0;right:0;top:-13px;bottom:-13px}
+.hsync i{width:7px;height:7px;border-radius:999px;background:var(--c);flex:none;display:block}
+.hline{display:flex;align-items:center;gap:9px;min-width:0}
+.hclub{display:flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;flex:none;
+  font-size:12px;font-weight:800;color:var(--watching);position:relative;
+  background:color-mix(in oklab,var(--watching) 15%,transparent)}
+.hclub::after{content:'';position:absolute;left:0;right:0;top:-10px;bottom:-10px}
+.hclub b{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}
+.dsearch{display:flex;align-items:center;gap:6px;background:#ffffff0f;border-radius:999px;height:44px;padding:0 4px 0 14px;width:250px}
+.dsearch input{flex:1;min-width:0;height:44px;background:none;border:0;outline:none;font-size:13.5px;font-weight:600}
+.icobtn{width:44px;height:44px;border-radius:999px;background:#ffffff10;display:grid;place-items:center;font-size:17px;flex:none}
+.tabs{display:flex;gap:4px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:82px;height:50px;padding:0 6px;border-radius:16px 16px 0 0;background:transparent;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-bottom:3px solid transparent;color:var(--text-dim)}
+.tab.on{background:color-mix(in oklab,var(--c) 12%,var(--surface));border-bottom-color:var(--c);color:var(--c)}
+.tab b{font-size:11.5px;font-weight:800;white-space:nowrap}
+.chips{max-width:1500px;margin:9px auto 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+/* ═══════════ TABLERO ═══════════ */
+.board{display:grid;gap:14px;padding:4px 14px 130px;align-items:start;max-width:1500px;margin:0 auto;touch-action:pan-y}
+.cards{display:flex;flex-direction:column;gap:12px}
+.colhead{display:flex;align-items:center;gap:8px;padding:8px 6px 12px}
+.colhead b{font-weight:800;font-size:15px;color:var(--c);letter-spacing:-.1px}
+.colhead u{font-size:12.5px;font-weight:800;color:var(--c);text-decoration:none;
+  background:color-mix(in oklab,var(--c) 14%,transparent);border-radius:999px;padding:2px 8px}
+/* siempre puesta, invisible: el arrastre la enciende sin repintar el tablero */
+.dropline{height:4px;border-radius:999px;background:var(--c);box-shadow:0 0 14px var(--c);display:none}
+.dropline.on{display:block}
+@media (min-width:900px){
+  .board{grid-template-columns:repeat(3,minmax(230px,1fr)) 74px;padding:10px 22px 160px;gap:18px}
+  .board[data-dropped="open"]{grid-template-columns:repeat(4,minmax(230px,1fr))}
+  .col[data-collapsed="true"] .cards{display:none}
+  .col[data-collapsed="true"] .colhead{writing-mode:vertical-rl;height:230px;padding:14px 0;justify-content:flex-start;cursor:pointer}
+  .col[data-collapsed="true"] .colhead u{writing-mode:horizontal-tb}
+  .col[data-key="dropped"] .colhead{cursor:pointer}
+  .mob{display:none!important}
+}
+@media (max-width:899px){
+  .col[data-active="false"]{display:none}
+  .colhead{display:none}
+  .desk{display:none!important}
+}
+
+/* ═══════════ TARJETA ═══════════ */
+.cw{position:relative}
+/* la pista de deslizamiento está siempre puesta y empieza invisible: el gesto la
+   enciende escribiendo estilos, sin pasar por el pintado */
+.swipe{position:absolute;inset:0;border-radius:20px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;font-size:24px;opacity:0}
+.swipe>span{opacity:0}
+.card{position:relative;background:color-mix(in oklab,var(--c) 7%,var(--surface));border-radius:20px;padding:12px;
+  box-shadow:0 8px 24px -16px #000c;touch-action:pan-y;will-change:transform;
+  transition:transform .22s var(--spring),opacity .18s ease}
+.card.glow{box-shadow:0 0 0 1.5px color-mix(in oklab,var(--c) 60%,transparent),0 10px 30px -14px color-mix(in oklab,var(--c) 50%,transparent)}
+.card.ghost{opacity:.22;box-shadow:none}
+.ctop{display:flex;gap:12px;align-items:flex-start}
+.post{width:56px;height:84px;border-radius:12px;flex:none;background-color:#0003;background-size:cover;background-position:center}
+.post.ink{display:grid;place-items:center;font-weight:800;font-size:22px;
+  background:color-mix(in oklab,var(--c) 18%,transparent);color:var(--c)}
+.ctitle{font-weight:800;font-size:15.5px;line-height:1.2;text-wrap:pretty}
+.corig{font-size:11.5px;color:var(--text-dim);margin-top:1px;font-style:italic}
+.cmeta{font-size:12px;color:var(--text-dim);margin-top:3px;font-weight:600}
+.crow{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.stack{display:flex}
+.stack>*+*{margin-left:-8px}
+.stack .av,.stack .more{box-shadow:0 0 0 2px color-mix(in oklab,var(--c) 7%,var(--surface))}
+.more{height:26px;min-width:26px;padding:0 5px;border-radius:999px;background:var(--surface-2);
+  display:grid;place-items:center;font-size:11.5px;font-weight:800;color:var(--text-dim)}
+.prop{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);font-weight:600}
+.ncount{margin-left:auto;height:26px;padding:0 9px;border-radius:999px;background:#ffffff0f;
+  font-size:11.5px;font-weight:800;color:var(--text-dim);display:flex;align-items:center;gap:4px}
+.hype{display:flex;align-items:center;gap:7px;border-radius:999px;padding:5px 10px 5px 11px;background:#ffffff0d}
+.hype.hot{background:color-mix(in oklab,var(--c) 20%,transparent)}
+.hype b{font-size:11.5px;font-weight:800;color:var(--c)}
+.hdot{width:9px;height:9px;border-radius:999px;background:#ffffff20}
+.hdot.on{background:var(--c)}
+.prov{height:24px;display:flex;align-items:center;gap:5px;padding:0 9px 0 3px;border-radius:999px;background:#ffffff0f}
+.prov i{width:18px;height:18px;border-radius:6px;background-size:cover;display:block;background-color:#ffffff14}
+.prov span{font-size:10.5px;font-weight:800;color:var(--text-dim)}
+.epline{display:flex;align-items:center;gap:11px;margin-top:12px}
+.epmark{font-weight:800;font-size:17px;color:var(--c);letter-spacing:-.3px}
+.epcount{font-size:11.5px;color:var(--text-dim);font-weight:700}
+.minus{background:#ffffff12;font-size:20px;font-weight:800}
+.plus{background:var(--c);color:var(--ink);font-size:21px;font-weight:800;
+  box-shadow:0 8px 20px -12px var(--c)}
+.plus.off{background:#ffffff12;color:var(--text);box-shadow:none}
+.rows{display:flex;flex-direction:column;gap:7px;margin-top:11px;padding-top:10px;box-shadow:inset 0 1px 0 #ffffff12}
+.prow{display:flex;align-items:center;gap:9px}
+.prow b{font-weight:800;font-size:13px}
+.prow em{font-size:10.5px;color:var(--text-dim);font-weight:700;font-style:normal}
+.wide{width:100%;margin-top:11px;height:44px;border-radius:14px;background:#ffffff0d;
+  display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:13.5px;font-weight:800;color:var(--c)}
+.seen{width:100%;margin-top:11px;height:46px;border-radius:14px;background:var(--c);color:var(--ink);
+  font-size:14.5px;font-weight:800;display:grid;place-items:center}
+.rated{display:flex;align-items:center;gap:12px;margin-top:11px}
+.ravg{font-weight:800;font-size:28px;line-height:1;color:var(--c);letter-spacing:-1px}
+.rstars{font-size:13px;color:var(--c);letter-spacing:1px}
+.rchip{display:flex;align-items:center;gap:3px;height:22px;padding:0 7px 0 3px;border-radius:999px;
+  background:#ffffff0f;font-size:10.5px;font-weight:800;color:var(--text-dim)}
+.rchip .av{width:17px;height:17px;font-size:10px}
+.mood{margin-top:9px;font-size:12px;font-weight:700;border-radius:12px;padding:7px 11px;
+  color:var(--c);background:color-mix(in oklab,var(--c) 16%,transparent)}
+.elsew{margin-top:9px;font-size:12px;color:var(--text-dim);font-weight:600;display:flex;gap:6px;align-items:flex-start}
+.empty{display:flex;flex-direction:column;align-items:center;gap:9px;padding:30px 18px;border-radius:20px;
+  background:color-mix(in oklab,var(--c) 5%,var(--surface));text-align:center}
+.empty p{font-size:13.5px;font-weight:700;color:var(--text-dim);max-width:230px;margin:0;text-wrap:pretty}
+
+/* ═══════════ NAV / FLOTANTES ═══════════ */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;gap:4px;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:color-mix(in oklab,var(--surface-2) 94%,transparent);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 -14px 34px -18px #000c}
+nav button{flex:1;height:56px;border-radius:18px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;color:var(--text-dim)}
+nav button i{font-size:19px;line-height:1;font-weight:800;font-style:normal}
+nav button b{font-size:10.5px;font-weight:800}
+nav button.on{background:color-mix(in oklab,var(--watching) 14%,transparent);color:var(--watching)}
+nav button.pri{flex:1.25;background:var(--watching);color:var(--ink);box-shadow:0 10px 26px -12px var(--watching)}
+nav button.pri i{font-size:25px}
+.fab{position:fixed;right:26px;bottom:26px;z-index:40;height:58px;padding:0 24px;border-radius:999px;
+  background:var(--watching);color:var(--ink);font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:10px;
+  box-shadow:0 14px 34px -10px var(--watching),0 4px 12px #0006}
+/* la posición la escribe el arrastre en «translate», que se compone aparte del
+   transform y no obliga a repintar el tablero en cada pointermove */
+.ghostcard{position:fixed;left:0;top:0;z-index:60;pointer-events:none;transform:rotate(2deg) scale(1.03);
+  border-radius:20px;padding:12px;background:color-mix(in oklab,var(--c) 12%,var(--surface));
+  box-shadow:0 30px 60px -18px #000c,0 0 0 1px #ffffff1a}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:70;padding:16px 14px calc(20px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top,var(--surface-2),color-mix(in oklab,var(--surface-2) 0%,transparent));pointer-events:none}
+.dock>p{font-size:12.5px;font-weight:800;color:var(--text-dim);text-align:center;margin:0 0 10px}
+.dock>div{display:flex;gap:8px}
+.dockt{flex:1;height:86px;border-radius:20px;background:#ffffff12;color:var(--text-dim);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  transform:scale(1);transition:transform .16s var(--spring)}
+.dockt i{font-size:22px;font-style:normal;transition:font-size .16s var(--spring)}
+.dockt b{font-size:10.5px;font-weight:800}
+.dockt.over{background:color-mix(in oklab,var(--c) 30%,transparent);color:var(--c);transform:scale(1.1)}
+.dockt.over i{font-size:28px}
+.toast{position:fixed;left:14px;right:14px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:120;
+  display:flex;justify-content:center;pointer-events:none}
+.toast>div{pointer-events:auto;max-width:520px;width:100%;background:var(--surface-2);border-radius:18px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 22px 50px -18px #000c}
+.toast span{font-size:13.5px;font-weight:700;flex:1;text-wrap:pretty}
+.toast button{flex:none;height:38px;padding:0 15px;border-radius:999px;background:var(--wish);
+  color:#2A2016;font-weight:800;font-size:13.5px}
+.conf{position:fixed;z-index:80;pointer-events:none}
+
+/* ═══════════ HOJAS ═══════════ */
+/* el hueco de arriba respeta la muesca: si no, con la hoja al máximo el tirador
+   se metía debajo del reloj */
+.ov{position:fixed;inset:0;z-index:100;background:#0A0812b8;backdrop-filter:blur(3px);
+  display:flex;align-items:flex-end;justify-content:center;padding:env(safe-area-inset-top) 0 0}
+/* «92vh» se mide contra el viewport GRANDE, el de la barra de URL escondida,
+   mientras que .ov ocupa sólo el visible. En el móvil eso significaba que la
+   hoja podía pedir más alto del que había y, al estar pegada abajo, desbordaba
+   HACIA ARRIBA: el borde superior, el tirador y el botón de cerrar se salían de
+   la pantalla. «dvh» sigue al viewport visible y el «%» se mide contra este
+   mismo contenedor; se coge el menor de los dos y ya no se sale por ningún lado. */
+.sheet{position:relative;background:var(--surface-2);width:100%;max-width:100%;
+  max-height:92vh;max-height:min(92dvh,92%);border-radius:28px 28px 0 0;
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -20px 60px -20px #000e;
+  will-change:transform;transition:transform .2s var(--spring)}
+/* la entrada se anima sólo al abrir la hoja, no cada vez que cambia algo dentro:
+   la clase la pone el pintado a mano sobre el elemento recién creado */
+/* «backwards» y no «both» a propósito: con «both» la animación se queda puesta
+   para siempre y, en la cascada, una animación gana a un estilo en línea — o
+   sea que el transform que escribe el arrastre no se veía y la hoja no seguía
+   al dedo. Con «backwards» sólo se rellena la entrada y luego suelta el mando. */
+.ov.anim{animation:fadeIn .18s ease backwards}
+.sheet.anim{animation:sheetUp .24s var(--spring) backwards}
+/* la zona de agarre es bastante más alta que la barrita que se ve: antes eran
+   21 px y no había quien la cogiera */
+.handle{flex:none;padding:15px 0 11px;display:grid;place-items:center;cursor:grab;touch-action:none}
+.handle:active{cursor:grabbing}
+.handle i{width:52px;height:5px;border-radius:999px;background:#ffffff38;display:block}
+/* cerrar / volver: hasta ahora sólo se salía tocando fuera o arrastrando la
+   barrita, y en un móvil eso no lo encuentra nadie */
+.xsheet{position:absolute;top:9px;right:9px;z-index:2;width:44px;height:44px;border-radius:999px;
+  display:grid;place-items:center;font-size:22px;font-weight:800;color:var(--text-dim);line-height:1}
+.xsheet:active{background:#ffffff12}
+.scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:6px 18px calc(24px + env(safe-area-inset-bottom))}
+@media (min-width:900px){
+  .ov{align-items:center;padding:28px}
+  .sheet{max-width:620px;max-height:88vh;max-height:min(88dvh,100%);border-radius:28px}
+}
+.stitle{font-weight:800;font-size:20px;letter-spacing:-.3px}
+.ssub{font-size:13px;color:var(--text-dim);font-weight:600;margin-top:4px;text-wrap:pretty}
+.dposter{width:104px;height:156px;border-radius:16px;flex:none;background-color:#0003;
+  background-size:cover;background-position:center;box-shadow:0 14px 30px -14px #000b}
+.dposter.ink{display:grid;place-items:center;font-weight:800;font-size:38px;
+  background:color-mix(in oklab,var(--c) 18%,transparent);color:var(--c);box-shadow:none}
+.dtitle{font-weight:800;font-size:22px;line-height:1.12;letter-spacing:-.4px;text-wrap:pretty}
+.gchip{height:26px;padding:0 11px;border-radius:999px;background:#ffffff0f;font-size:11.5px;
+  font-weight:800;color:var(--text-dim);display:grid;place-items:center}
+.pchip{height:28px;display:flex;align-items:center;gap:6px;padding:0 11px 0 4px;border-radius:999px;background:#ffffff12}
+.pchip i{width:20px;height:20px;border-radius:7px;background-size:cover;display:block;background-color:#ffffff14}
+.pchip span{font-size:11.5px;font-weight:800}
+.prow2{background:var(--surface);border-radius:18px;padding:11px 12px}
+.prow2.me{background:color-mix(in oklab,var(--c) 9%,var(--surface))}
+.big{flex:1;min-width:170px;height:48px;border-radius:999px;background:#ffffff12;font-size:13.5px;
+  font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px}
+.note{display:flex;gap:9px;align-items:flex-start}
+.note>div{flex:1;min-width:0;background:var(--surface);border-radius:16px;padding:9px 12px}
+.res{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:18px;padding:10px;width:100%}
+.res.have{background:color-mix(in oklab,var(--wish) 8%,var(--surface))}
+.res i{width:44px;height:66px;border-radius:10px;flex:none;background-color:#0003;background-size:cover;background-position:center;display:block}
+.cue{flex:none;font-size:13px;font-weight:800;height:34px;padding:0 13px;border-radius:999px;
+  display:grid;place-items:center;background:#ffffff10;color:var(--text-dim)}
+.cue.join{background:color-mix(in oklab,var(--wish) 24%,transparent);color:var(--wish)}
+.spin{width:170px;height:255px;border-radius:20px;background-color:#0004;background-size:cover;
+  background-position:center;box-shadow:0 24px 50px -18px #000c;animation:spinPulse .22s ease-in-out infinite alternate}
+.rposter{width:190px;height:285px;border-radius:22px;background-color:#0004;background-size:cover;
+  background-position:center;box-shadow:0 26px 54px -18px #000c}
+.stat{background:var(--surface);border-radius:20px;padding:14px}
+.stat b{font-weight:800;font-size:30px;letter-spacing:-1px;color:var(--c);margin-top:4px;line-height:1;display:block}
+.stat p{font-size:12px;color:var(--text-dim);font-weight:600;margin:5px 0 0;text-wrap:pretty}
+.srow{display:flex;align-items:center;gap:10px}
+.srow>b{width:100px;flex:none;font-size:12.5px;font-weight:800;display:flex;align-items:center;gap:6px;overflow:hidden}
+.srow>i{flex:1;min-width:0;height:10px;border-radius:999px;background:#ffffff14;overflow:hidden;display:block}
+.srow>i>u{display:block;height:100%;border-radius:999px;background:var(--c)}
+.srow>em{flex:none;font-size:12px;font-weight:800;color:var(--text-dim);min-width:44px;text-align:right;font-style:normal}
+.themeb{min-width:0;height:68px;border-radius:18px;display:flex;flex-direction:column;justify-content:center;
+  gap:8px;padding:0 14px;box-shadow:inset 0 0 0 1px #ffffff1a}
+.themeb.on{box-shadow:0 0 0 2.5px var(--c)}
+.footbar{position:sticky;bottom:-6px;background:var(--surface-2);display:flex;gap:8px;margin-top:22px;
+  padding:14px 0 6px;box-shadow:0 -16px 22px -6px var(--surface-2)}
+.banner{margin:0 14px 8px;background:color-mix(in oklab,var(--wish) 14%,var(--surface));border-radius:16px;
+  padding:11px 14px;font-size:12.5px;font-weight:700;color:var(--wish);text-wrap:pretty}
+
+/* ═══════════ MOVIMIENTO ═══════════ */
+@keyframes cardIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+@keyframes land{0%{transform:scale(1.06) rotate(-1deg)}60%{transform:scale(.98)}100%{transform:scale(1)}}
+@keyframes splitA{0%{transform:translateX(0) scale(1.03);box-shadow:0 0 0 3px #ffffff30}55%{transform:translateX(6px) scale(.985)}100%{transform:translateX(0) scale(1)}}
+@keyframes joinA{0%{transform:scale(.9);opacity:.4}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1)}}
+@keyframes sheetUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes shimmer{0%{background-position:-220px 0}100%{background-position:280px 0}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes confetti{0%{opacity:1;transform:translate(0,0) scale(.6) rotate(0)}
+  100%{opacity:0;transform:translate(var(--cx),var(--cy)) scale(1.15) rotate(var(--cr))}}
+@keyframes starPop{0%{transform:scale(.4)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes spinPulse{0%{transform:scale(.94) rotate(-2deg)}100%{transform:scale(1) rotate(2deg)}}
+[data-anim="in"]{animation:cardIn .22s var(--spring)}
+[data-anim="land"]{animation:land .3s var(--spring) both}
+[data-anim="split"]{animation:splitA .34s var(--spring) both}
+[data-anim="join"]{animation:joinA .32s var(--spring) both}
+.float{animation:floatY 3.4s ease-in-out infinite}
+.skel{background:linear-gradient(100deg,#ffffff00 12%,#ffffff14 32%,#ffffff00 52%) var(--surface);
+  background-size:420px 100%;animation:shimmer 1.15s linear infinite;border-radius:20px;
+  box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c) 13%,transparent)}
+.pop{animation:starPop .26s var(--spring) both}
+.fade{animation:fadeIn .18s ease both}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+body{margin:0;padding:26px;background:var(--bg);font-family:Nunito,sans-serif}
+.previa{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.previa h2{font-size:13px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--text-dim);margin:0}
+.marco{position:relative;width:390px;height:740px;overflow:hidden;border-radius:30px;
+  background:var(--bg);box-shadow:0 0 0 1px #ffffff1a;flex:none}
+.marco header,.marco nav,.marco .fab,.marco .ov{position:absolute}
+.marco nav{left:0;right:0;bottom:0}
+.suelto header,.suelto nav{position:static}
+.fila{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.col1{width:330px}
+.muestra{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;color:var(--text-dim)}
+.muestra i{width:34px;height:34px;border-radius:12px;display:block;flex:none;box-shadow:0 0 0 1px #ffffff1a}
+.paleta{background:var(--surface);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;width:250px}
+.paleta b{font-size:14px;font-weight:800;color:var(--text)}
+</style></head><body><div class="previa"><h2>cabecera</h2><div class="fila suelto"><header><div class="hrow"><div class="float" style="flex:none"><svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="8" width="44" height="44" rx="22" fill="var(--watching)" opacity="1"></rect><circle cx="18" cy="50" r="7.4" fill="var(--watching)" opacity="1"></circle><circle cx="32" cy="52" r="7.4" fill="var(--watching)" opacity="1"></circle><circle cx="46" cy="50" r="7.4" fill="var(--watching)" opacity="1"></circle><ellipse cx="25" cy="28" rx="3.2" ry="4" fill="#20182B"></ellipse><ellipse cx="39" cy="28" rx="3.2" ry="4" fill="#20182B"></ellipse><circle cx="18.5" cy="35" r="3.4" fill="#20182B" opacity=".16"></circle><circle cx="45.5" cy="35" r="3.4" fill="#20182B" opacity=".16"></circle><path d="M29 36q3 3 6 0" stroke="#20182B" stroke-width="2.2" fill="none" stroke-linecap="round"></path></svg></div><div style="flex:1;min-width:0"><div class="htitle">Sofa Club</div><div class="hline"><button class="hsync" style="--c:var(--wish)"><i></i><span>modo demo · nada se guarda</span></button></div></div><div style="display:flex;align-items:center;gap:6px"><div class="dsearch desk"><span style="font-size:13px;opacity:.7">🔍</span><input id="qtop" value="" data-in="q" aria-label="Buscar en vuestro tablero" placeholder="buscar en vuestro tablero…"></div><button aria-label="Buscar y filtrar" style="min-width:44px;height:44px;padding:0 14px;border-radius:999px;font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:7px;background:#ffffff10;color:var(--text)"><span class="mob" style="font-size:17px">🔍</span><span class="desk">Filtros</span></button><div class="desk" style="display:flex;align-items:center;gap:6px"><button style="height:44px;padding:0 16px;border-radius:999px;background:var(--wish);color:#2A2016;font-weight:800;font-size:14.5px;display:flex;align-items:center;gap:7px;box-shadow:0 8px 22px -14px var(--wish)">🎲 <span>¿Qué vemos hoy?</span></button><button class="icobtn" aria-label="Estadísticas" title="Estadísticas">📊</button><button class="icobtn" aria-label="Ajustes" title="Ajustes">⚙️</button></div></div></div><div class="tabs mob"><button class="tab" style="--c:var(--wish)"><span style="font-size:15px;line-height:1">💭</span><b>Nos apetece · 4</b></button><button class="tab on" style="--c:var(--watching)"><span style="font-size:15px;line-height:1">👀</span><b>Viendo · 4</b></button><button class="tab" style="--c:var(--done)"><span style="font-size:15px;line-height:1">✅</span><b>Terminado · 4</b></button><button class="tab" style="--c:var(--dropped)"><span style="font-size:15px;line-height:1">😴</span><b>Dejada · 2</b></button></div></header></div><h2>barra inferior y botón de añadir</h2><div class="fila"><div class="marco"><nav class="mob" aria-label="Secciones"><button class="" aria-label="Tablero" aria-current="false"><i>🗂</i><b>Tablero</b></button><button class="" aria-label="Ruleta" aria-current="false"><i>🎲</i><b>Ruleta</b></button><button class="pri" aria-label="Añadir un título nuevo al tablero" aria-current="false"><i>+</i><b>Añadir</b></button><button class="on" aria-label="Datos" aria-current="page"><i>📊</i><b>Datos</b></button><button class="" aria-label="Ajustes" aria-current="false"><i>⚙️</i><b>Ajustes</b></button></nav><button class="fab desk"><span style="font-size:26px;line-height:1;margin-top:-2px">+</span> Añadir un título</button></div></div></div></body></html>
