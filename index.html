@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hkhUyebE6ywt4zp5OD6twrO7RHRuAEJ/bAQWFpn0i4c='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/FVKhQXzRjpky88p2lfLbey8UfOjnHSYXoYQsjZHccs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -576,7 +576,7 @@ function createApi(cfg){
   let sync = { state: 'idle', pending: 0 };
   const subs = new Set();
   const cola = [];
-  let enviando = false, sinClave = false, ultimoError = null;
+  let enviando = false, sinClave = false, ultimoError = null, sobraba = false;
   const catalogo = {};
 
   const emit = () => { const s = state; subs.forEach((f) => { try { f(s); } catch(e){ console.error(e); } }); };
@@ -723,6 +723,15 @@ function createApi(cfg){
       if (demo){ const raw = demoSeed(); state = sanear({ me: raw.users[0].id, users: raw.users, items: raw.items }); emit(); return; }
       const c = leerCacheDe(grupoDe(cfg.active));            /* pinta ya, sin esperar al Worker */
       if (c){ state = c; emit(); }
+      /* Una invitación al club en el que YA estás no sirve de nada: canjearla te
+         crearía una segunda persona y dejaría la primera huérfana en el tablero.
+         Pero sólo sobra si tu clave de ese club sigue valiendo — si te echaron o
+         se regeneró, la invitación es justo lo que necesitas. Por eso se
+         pregunta primero y se decide después.                                  */
+      if (cfg.invite && cfg.active && grupoDe(cfg.invite) === grupoDe(cfg.active)){
+        await refrescar();
+        if (!sinClave){ cfg.invite = null; sobraba = true; emit(); return; }
+      }
       if (cfg.invite){
         emit();          /* la pantalla de bienvenida se encarga: llamará a unirse() */
         return;
@@ -739,6 +748,8 @@ function createApi(cfg){
       return r;
     },
     hayInvitacion: () => !!cfg.invite,
+    clubInvitado: () => grupoDe(cfg.invite),
+    invitacionSobraba(){ const s = sobraba; sobraba = false; return s; },   /* se cuenta una vez */
   };
 
   window.addEventListener('online', () => { if (cola.length) vaciar(); else refrescar(); });
@@ -1758,10 +1769,13 @@ function clubsHtml(){
 /* ── hoja: bienvenida ── */
 function welcomeHtml(){
   const p = S.prof || { name:'', emoji:'🐻', color:PALETTE[0] };
+  const club = (Api.hayInvitacion && Api.hayInvitacion() && Api.clubInvitado) ? Api.clubInvitado() : null;
   return '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0 0">'
     + '<div class="float">' + mascot(86, p.color) + '</div>'
     + '<div style="font-weight:800;font-size:24px;letter-spacing:-.5px;margin-top:10px">hola, ¿quién eres?</div>'
-    + '<div style="font-size:14px;color:var(--text-dim);font-weight:600;margin-top:6px;max-width:320px" class="pretty">el club de series y pelis de tu sofá. elige nombre, bicho y color y entra.</div></div>'
+    + '<div style="font-size:14px;color:var(--text-dim);font-weight:600;margin-top:6px;max-width:320px" class="pretty">'
+    + (club ? 'te han invitado al club <b style="color:var(--text)">' + esc(club) + '</b>. Elige nombre, bicho y color y entra.'
+            : 'el club de series y pelis de tu sofá. elige nombre, bicho y color y entra.') + '</div></div>'
     + (S.profRec ? '<div class="xclub" style="margin-top:14px">✨<div>te he puesto lo mismo que la última vez, para no hacerte teclear. Cámbialo si en este club eres otra persona.</div></div>' : '')
     + '<input id="wname" class="inp" data-in="pname" value="' + esc(p.name) + '" placeholder="tu nombre" style="height:56px;font-size:17px;font-weight:800;margin-top:18px;text-align:center">'
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;justify-content:center">'
@@ -1793,7 +1807,12 @@ function sheetHtml(){
 }
 function view(){
   if (!S.data) return headerHtml() + bootHtml();
-  const needsWelcome = !S.data.me || !S.data.users.some((u) => u.id === S.data.me);
+  /* Con una invitación en la mano SIEMPRE hay que preguntar quién eres, aunque
+     ya estés dentro de otro club: si no, entrar en un segundo club desde un
+     móvil que ya tiene uno es imposible y la invitación se pierde en silencio.
+     Las redundantes ya las ha descartado el Api antes de llegar aquí.          */
+  const needsWelcome = (Api.hayInvitacion && Api.hayInvitacion())
+    || !S.data.me || !S.data.users.some((u) => u.id === S.data.me);
   if (needsWelcome && (!S.sheet || S.sheet.kind !== 'welcome')) S.sheet = { kind:'welcome' };
   if (needsWelcome && !S.prof){
     const rec = Api.perfilDelDispositivo ? Api.perfilDelDispositivo() : null;
@@ -2317,6 +2336,11 @@ window.addEventListener('resize', () => {
   await Api.boot();
   S.data = Api.getState(); S.sync = Api.getSyncStatus();
   setTimeout(() => setS({ booting:false }), 700);
+  /* si la invitación era para un club en el que ya estabas, no se canjea, pero
+     tampoco se calla: abrir un enlace y que no pase nada es lo peor que hay */
+  if (Api.invitacionSobraba && Api.invitacionSobraba()){
+    setTimeout(() => toast('ya estabas en este club 🛋️ te he dejado como estabas'), 900);
+  }
 })();
 </script>
 </body>
