@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/FVKhQXzRjpky88p2lfLbey8UfOjnHSYXoYQsjZHccs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oucpzWHGpkwuiq+u9+hZcbef/Gw0sXzb6oRO690pwZ8='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -738,6 +738,17 @@ function createApi(cfg){
       }
       await refrescar();
     },
+    /* crear un club nuevo estando ya en alguno. El Worker exige una clave
+       válida de cualquier club: no hace falta la llave maestra, pero tampoco
+       puede hacerlo quien pase por aquí de casualidad. */
+    async crearClub(nombre, perfil){
+      const r = await llamar('/api/group', { method: 'POST', body: JSON.stringify({
+        group: nombre, name: perfil.name, emoji: perfil.emoji, color: perfil.color }) });
+      añadirSecreto(cfg, r.secret);
+      guardarPerfil(perfil);
+      state = sanear(r.state); guardarCacheDe(grupoDe(r.secret), state);
+      return r;
+    },
     /* alta con invitación de un solo uso: el Worker devuelve TU secreto */
     async unirse(perfil){
       const r = await llamar('/api/join', { method: 'POST', body: JSON.stringify({ invite: cfg.invite, name: perfil.name, emoji: perfil.emoji, color: perfil.color }) });
@@ -888,7 +899,7 @@ const S = {
   sheet:null, sheetDy:0, toast:null, pendingDel:null,
   noteDraft:'', addQ:'', addResults:null, addSearching:false, addPick:null,
   roul:null, statScope:'me', statYear:'all',
-  prof:null, profRec:false, invite:null, confirmAsk:null,
+  prof:null, profRec:false, invite:null, confirmAsk:null, nuevoClub:'', creando:false,
   saveState:'idle', inviteState:'idle', copyState:'idle', pop:null,
 };
 const setS = (p) => { Object.assign(S, p); render(); };
@@ -1757,7 +1768,14 @@ function clubsHtml(){
           + '</div>';
       }).join('')
     + '</div>'
-    + '<div class="b" style="border-radius:22px;margin-top:12px"><div class="lbl">entrar en otro club</div>'
+    + '<div class="b" style="border-radius:22px;margin-top:12px"><div class="lbl">crear un club nuevo</div>'
+    + '<div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-top:8px" class="pretty">'
+    + 'para otra gente, otro sofá. Serás su dueño y empezará vacío. En minúsculas y sin espacios.</div>'
+    + '<div style="display:flex;gap:8px;margin-top:11px">'
+    + '<input id="nclub" class="inp" data-in="nclub" value="' + esc(S.nuevoClub || '') + '" placeholder="amigos, curro, cine…" style="height:48px;font-size:15px;font-weight:800">'
+    + '<button class="r44" data-a="p.crear" aria-label="Crear el club" style="width:48px;height:48px;flex:none;background:' + (S.creando ? '#ffffff14' : 'var(--done)') + ';color:' + (S.creando ? 'var(--text-dim)' : 'var(--ink)') + ';font-size:20px;font-weight:800">' + (S.creando ? '·' : '+') + '</button>'
+    + '</div></div>'
+    + '<div class="b" style="border-radius:22px;margin-top:10px"><div class="lbl">entrar en el club de otro</div>'
     + '<div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-top:8px" class="pretty">'
     + 'necesitas que alguien de dentro te mande una invitación. Al abrirla entras como alguien nuevo de ese club, con tu propia clave, y este dispositivo se queda con las dos.</div>'
     + (rec ? '<div class="xclub" style="margin-top:11px"><span class="av s30" style="--c:' + rec.color + '">' + rec.emoji + '</span>'
@@ -2169,7 +2187,28 @@ document.addEventListener('click', (e) => {
         else if (w === 'rmuser') setS({ confirmAsk:{ kind:'user', userId:arg, name:user(arg).name }, sheet:{ kind:'confirm' } });
         else if (w === 'copy') copyInvite();
         else if (w === 'forget') Api.olvidarDispositivo();
-        else if (w === 'clubs') setS({ sheet:{ kind:'clubs' }, sheetDy:0 });
+        else if (w === 'clubs') setS({ sheet:{ kind:'clubs' }, sheetDy:0, nuevoClub:'', creando:false });
+        else if (w === 'crear'){
+          if (S.creando) break;
+          /* norm() ya quita los acentos, con el rango de diacríticos escapado.
+             No los escribas literales aquí: se leen fatal y son la clase de
+             carácter invisible que ya nos costó una tarde. */
+          const n = norm(String(S.nuevoClub || '').trim()).replace(/\s+/g, '-');
+          if (!/^[a-z0-9][a-z0-9-]{1,30}$/.test(n)){ toast('el nombre va en minúsculas, sin espacios ni acentos, de 2 a 31 letras'); break; }
+          if (Api.grupos().some((g) => g.group === n)){ toast('ya estás en un club que se llama así'); break; }
+          const yo = user(meId());
+          const rec = Api.perfilDelDispositivo() || { name:yo.name, emoji:yo.emoji, color:yo.color };
+          setS({ creando:true });
+          Api.crearClub(n, rec).then(() => {
+            toast('club «' + n + '» creado ✨ ya estás dentro');
+            setTimeout(() => location.reload(), 700);
+          }).catch((e) => {
+            setS({ creando:false });
+            toast(e.code === 'ya-existe' ? 'ese nombre ya lo tiene otro club'
+              : e.code === 'demasiados-clubes' ? 'hay demasiados clubes ya, habla conmigo'
+              : 'no he podido crearlo (・_・;) ¿probamos otra vez?');
+          });
+        }
         else if (w === 'switch'){
           const s = decodeURIComponent(arg);
           if (Api.grupos().some((g) => g.secret === s && g.activo)) closeSheet();
@@ -2201,6 +2240,7 @@ document.addEventListener('input', (e) => {
   else if (k === 'note'){ S.noteDraft = el.value; }
   else if (k === 'add') onSearchInput(el.value);
   else if (k === 'pname'){ S.prof = Object.assign({}, S.prof, { name:el.value }); render(); }
+  else if (k === 'nclub'){ S.nuevoClub = el.value; }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && S.sheet) closeSheet();

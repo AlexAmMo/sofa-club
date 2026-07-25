@@ -185,5 +185,36 @@ ok('quien creó el club sí puede echar', fuera.status === 200);
 ok('y la clave del expulsado deja de valer al instante',
   (await pedir('/api/session', { clave: claveNuria })).status === 401);
 
+/* ══ 5. crear clubes siendo ya de alguno ══ */
+console.log('\n  — crear un club sin la llave maestra —');
+
+const nuevo = await pedir('/api/group', { clave: claveAlex, cuerpo: { group: 'curro', name: 'Álex', emoji: '🐙', color: '#FF8FD0' } });
+ok('quien ya está en un club puede crear otro', nuevo.status === 200 && !!nuevo.body.secret, JSON.stringify(nuevo.body).slice(0, 120));
+ok('y el club nuevo es suyo, con su propia clave',
+  nuevo.body.secret.split('.')[0] === 'curro' && nuevo.body.secret !== claveAlex);
+ok('con un identificador de persona distinto al del otro club',
+  nuevo.body.state.me !== idAlex, nuevo.body.state.me + ' vs ' + idAlex);
+ok('el perfil que mandó es el que se guarda',
+  nuevo.body.state.users[0].name === 'Álex' && nuevo.body.state.users[0].emoji === '🐙');
+
+ok('sin ninguna clave no se crea nada',
+  (await pedir('/api/group', { cuerpo: { group: 'colados', name: 'X' } })).status === 401);
+ok('con una clave inventada tampoco',
+  (await pedir('/api/group', { clave: 'pareja.' + 'z'.repeat(24), cuerpo: { group: 'colados2', name: 'X' } })).status === 401);
+ok('ni con la clave de alguien a quien echaron',
+  (await pedir('/api/group', { clave: claveNuria, cuerpo: { group: 'colados3', name: 'X' } })).status === 401);
+ok('no se puede pisar el nombre de un club que ya existe',
+  (await pedir('/api/group', { clave: claveAlex, cuerpo: { group: 'pareja', name: 'X' } })).status === 409);
+ok('ni colar un nombre con travesía de directorios',
+  (await pedir('/api/group', { clave: claveAlex, cuerpo: { group: '../fuera', name: 'X' } })).status === 400);
+ok('ni con mayúsculas o espacios',
+  (await pedir('/api/group', { clave: claveAlex, cuerpo: { group: 'Mi Club', name: 'X' } })).status === 400);
+
+const claveCurro = nuevo.body.secret;
+ok('el club nuevo no ve los títulos del viejo',
+  (await pedir('/api/session', { clave: claveCurro })).body.state.items.length === 0);
+ok('y el viejo sigue sin enterarse del nuevo',
+  !JSON.stringify((await pedir('/api/session', { clave: claveAlex })).body).includes('curro'));
+
 console.log('\n' + (fallos ? fallos + ' PRUEBA(S) FALLIDA(S)' : 'todas las pruebas del Worker pasan'));
 process.exit(fallos ? 1 : 0);

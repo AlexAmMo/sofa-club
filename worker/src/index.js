@@ -80,6 +80,18 @@ async function leerGrupo(env, group){
   const j = await r.json();
   return { doc: JSON.parse(b64dec(j.content || '')), sha: j.sha };
 }
+/* Tope de seguridad: si alguien a quien invitaste se vuelve loco creando clubes,
+   esto es lo único que hay entre él y tu cuota de GitHub. No es un límite de
+   producto — 200 clubes no los vas a tener nunca — es un cortafuegos.          */
+const TOPE_CLUBES = 200;
+async function demasiadosClubes(env){
+  const url = GH + '/repos/' + env.REPO + '/contents/data?ref=' + encodeURIComponent(env.BRANCH || 'main');
+  const r = await fetch(url, { headers: ghHeaders(env), cf: { cacheTtl: 0 } });
+  if (r.status === 404) return false;                 // aún no hay ni carpeta
+  if (!r.ok) return false;                            // ante la duda, no bloquear
+  const lista = await r.json();
+  return Array.isArray(lista) && lista.length >= TOPE_CLUBES;
+}
 async function escribirGrupo(env, group, doc, sha, mensaje){
   const url = GH + '/repos/' + env.REPO + '/contents/' + repoPath(env, group);
   const body = { message: mensaje || ('sofa club · ' + group), branch: env.BRANCH || 'main',
@@ -354,6 +366,28 @@ export default {
         const doc = { version: VERSION, group, createdAt: nowIso(), updatedAt: nowIso(), owner: yo.id, users: [yo], invites: [], items: [] };
         await escribirGrupo(env, group, doc, null, 'sofa club · nace el grupo ' + group);
         return json({ group, link: (env.APP_URL || '') + '#s=' + group + '.' + resto }, 200, cab);
+      }
+
+      /* — crear un club siendo ya de alguno —────────────────────────────────
+         Crear un club escribe un archivo en el repositorio, así que no puede
+         hacerlo cualquiera que dé con esta URL. Pero tampoco hace falta la
+         llave maestra: basta con demostrar que ya estás dentro de algún club,
+         es decir, que alguien te invitó. La puerta ya la guarda la invitación.
+         El primer club de todos sigue siendo cosa de /admin/group.           */
+      if (ruta === '/api/group' && req.method === 'POST'){
+        await identificar(env, req);            /* ¿eres de algún club? si no, aquí se acaba */
+        const body = await req.json();
+        const group = String(body.group || '').toLowerCase();
+        if (!GROUP_OK.test(group)) throw new Fallo(400, 'nombre-de-grupo', 'minúsculas, números y guiones, de 2 a 31 caracteres');
+        if (await demasiadosClubes(env)) throw new Fallo(429, 'demasiados-clubes');
+        const existente = await leerGrupo(env, group);
+        if (existente.doc) throw new Fallo(409, 'ya-existe');
+        const resto = randomSecret();
+        const yo = { id: uid('u_'), name: okName(body.name), emoji: okEmoji(body.emoji || '🐻'),
+          color: okColor(body.color || '#FF8FD0'), joinedAt: nowIso(), secretHash: await sha256(resto), deletedAt: null };
+        const doc = { version: VERSION, group, createdAt: nowIso(), updatedAt: nowIso(), owner: yo.id, users: [yo], invites: [], items: [] };
+        await escribirGrupo(env, group, doc, null, 'sofa club · nace el grupo ' + group);
+        return json({ group, secret: group + '.' + resto, state: vistaPublica(doc, yo.id) }, 200, cab);
       }
 
       /* — entrar con tu secreto — */
