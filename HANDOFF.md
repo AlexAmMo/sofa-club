@@ -211,6 +211,7 @@ Los parámetros `_` son restos del contrato antiguo: se ignoran. **No los uses p
 
 ```
 POST /admin/group   X-Admin-Key         { group, ownerName, ownerEmoji, ownerColor } → { group, link }
+POST /api/group     Bearer <secreto>    { group, name, emoji, color }              → { group, secret, state }
 POST /api/session   Bearer <secreto>                                                 → { state, group }
 POST /api/join                          { invite, name, emoji, color }               → { secret, state }
 POST /api/op        Bearer <secreto>    { op, args }                                 → { state, ...extra }

@@ -109,8 +109,12 @@ curl -X POST https://sofa-club.TU-SUBDOMINIO.workers.dev/admin/group \
   -d '{"group":"pareja","ownerName":"Alex","ownerEmoji":"🐻"}'
 ```
 
-Te devuelve **tu enlace personal**. Ábrelo y ya estás dentro. Repite con `"group":"amigos"` para el
-segundo club: son independientes por completo.
+Te devuelve **tu enlace personal**. Ábrelo y ya estás dentro.
+
+**Y esto sólo hace falta una vez.** A partir de ahí, cualquiera que esté dentro de un club puede
+crear otros desde *tus clubes → crear un club nuevo*, sin pasar por la terminal ni conocer la
+`ADMIN_KEY`. Crear un club escribe en el repositorio, así que no puede hacerlo quien dé con la URL
+por casualidad — pero sí quien ya fue invitado, que es donde está la puerta de verdad.
 
 ### 7. Invitar
 
