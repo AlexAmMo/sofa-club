@@ -12,8 +12,11 @@ Design trabaja con una vista previa por pieza. Aquí se fabrican esas vistas.
 ## Cómo
 
 ```bash
-node diseno/generar.js     # regenera las cuatro vistas previas
+node diseno/generar.js     # regenera las cinco vistas previas
 ```
+
+Son: paletas · tarjetas en sus cuatro estados · columnas vacías (las cuatro
+propias y la de «no hay nada con esos filtros») · hoja · cabecera y navegación.
 
 **El CSS se lee de `index.html` en cada pasada**, así que las vistas previas no
 pueden quedarse viejas: tocas los estilos de la app y se regeneran iguales. El

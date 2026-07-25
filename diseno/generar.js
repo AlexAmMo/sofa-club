@@ -69,14 +69,25 @@ function paletas(){
 const tarjetas = Object.entries(frag.tarjetas || {})
   .map(([estado, marca]) => `<div class="col1"><h2>${estado}</h2>${marca}</div>`).join('');
 
+/* Cada columna vacía tiene su bicho, su frase y su color: son cuatro dibujos
+   distintos, no un estado genérico, y por eso van todos. La quinta es la de
+   «no hay nada con esos filtros», que dice otra cosa muy distinta. */
+const vacias = Object.entries((frag.vacias && frag.vacias.naturales) || {})
+  .map(([estado, marca]) => `<div class="col1"><h2>${estado}</h2><div class="cards">${marca}</div></div>`).join('');
+
 const paginas = [
   ['fundamentos.html', pagina('Fundamentos', 'Paletas de Sofa Club',
     '<h2>cuatro paletas conmutables</h2><div class="fila">' + paletas() + '</div>')],
 
   /* si un fragmento no se extrajo, su sección no se pinta: mejor que un hueco */
   ['tarjetas.html', pagina('Componentes', 'Tarjetas',
-    '<h2>la tarjeta en sus cuatro estados</h2><div class="fila">' + tarjetas + '</div>'
-    + (frag.columnaVacia ? '<h2>columna vacía</h2><div class="fila"><div class="col1">' + frag.columnaVacia + '</div></div>' : ''))],
+    '<h2>la tarjeta en sus cuatro estados</h2><div class="fila">' + tarjetas + '</div>')],
+
+  ['vacias.html', pagina('Componentes', 'Columnas vacías',
+    '<h2>cada columna vacía dice lo suyo</h2><div class="fila">' + vacias + '</div>'
+    + (frag.vacias && frag.vacias.filtrada
+      ? '<h2>y cuando el filtro no encuentra nada</h2><div class="fila"><div class="col1"><div class="cards">'
+        + frag.vacias.filtrada + '</div></div></div>' : ''))],
 
   ['hoja.html', pagina('Componentes', 'Hoja',
     '<h2>hoja, tirador y salida</h2><div class="fila"><div class="marco">' + (frag.hoja || '') + '</div></div>')],
