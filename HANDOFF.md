@@ -20,8 +20,8 @@ Uso principal: **el móvil**, añadido a la pantalla de inicio.
 
 | | |
 |---|---|
-| Interfaz | completa y verificada en navegador |
-| Worker | completo, 28 pruebas contra GitHub y TMDB simulados |
+| Interfaz | completa, verificada en navegador y **en producción** |
+| Worker | completo, 40 pruebas contra GitHub y TMDB simulados |
 | Navegador | 32 pruebas de saneado, claves, copias locales y perfil |
 | Despliegue | **hecho**: Worker en Cloudflare, app en Pages, dos repos en la cuenta AlexAmMo |
 | E2E real | **hecho** el 25 de julio de 2026 contra GitHub, Cloudflare y TMDB de verdad |
@@ -30,11 +30,22 @@ En producción:
 
 - app: `https://alexammo.github.io/sofa-club/` (repo público `AlexAmMo/sofa-club`)
 - Worker: `https://sofa-club.mysofaclub.workers.dev`
-- datos: repo privado `AlexAmMo/sofa-club-data`
+- datos: repo privado `AlexAmMo/sofa-club-data` — **vacío**: los clubes de prueba se borraron
 - el remoto de git usa el alias SSH `github-sofaclub` (clave `~/.ssh/id_sofaclub`)
 
-Siguiente paso concreto: crear el club de verdad con `ADMIN_KEY` y repartir invitaciones.
-`PUESTA-EN-MARCHA.md` tiene el paso a paso por si hay que rehacerlo desde cero.
+### Lo que queda pendiente, y no es código
+
+1. **Rotar las credenciales.** Durante la puesta en marcha del 25 de julio los cuatro secretos
+   pasaron por una conversación de chat: los dos tokens de GitHub, el de TMDB y la `ADMIN_KEY`. Se
+   dan por quemados. Revocar los de GitHub en su pantalla, regenerar el de TMDB y cambiar la
+   `ADMIN_KEY` con `wrangler secret put`.
+2. **Crear el club de verdad** con la `ADMIN_KEY` nueva y repartir invitaciones. Ese enlace no se
+   pega en ningún chat: quien lo tiene *es* su dueño.
+
+Decisión aplazada: **dominio propio**. Se puede acortar la URL sin comprar nada renombrando el repo
+a `alexammo.github.io` (se serviría en la raíz), y eso **no** rompe las claves de nadie porque el
+path no forma parte del origen. Cambiar de dominio sí las rompería, así que si algún día se hace,
+mejor antes de repartir enlaces.
 
 ---
 
@@ -154,8 +165,20 @@ de club dejaba el tablero en blanco hasta que contestaba el Worker, y no había 
 otros clubes sin pedirlos. Se sanea **al leerla**, no al escribirla: es texto de `localStorage` y
 acaba en el DOM.
 
+**Por qué crear un club no pide la `ADMIN_KEY` pero sí una clave.** Crear un club escribe un archivo
+en el repositorio, así que abrirlo del todo convertiría el repo privado en almacenamiento gratuito
+para cualquiera que diera con la URL del Worker. Pero exigir la llave maestra obligaba a abrir una
+terminal cada vez. La línea está en `/api/group`: **pide un secreto válido de cualquier club**, es
+decir, demuestra que alguien te invitó. La puerta ya la guarda la invitación; esto sólo se apoya en
+ella. Hay además un tope de 200 clubes como cortafuegos, por si alguien invitado se desmadra. El
+primer club de todos sigue siendo cosa de `/admin/group`.
+
 **Por qué CSP con hash.** GitHub Pages no permite cabeceras, así que va en un `<meta>` con el SHA-256
 del bloque de script. Bloquea cualquier script inyectado, y `connect-src` limita la salida al Worker.
+
+**Por qué `.gitattributes` con `* -text`.** Git en Windows convierte los finales de línea, y el hash
+de la CSP se calcula sobre el contenido exacto. Sin eso, el archivo que sirve Pages podría no cuadrar
+con su propio hash y la página no arrancaría, con una pantalla en blanco por toda pista.
 
 ---
 
@@ -165,10 +188,11 @@ del bloque de script. Bloquea cualquier script inyectado, y `connect-src` limita
 sofa-club/
 ├── index.html          la app entera. Un archivo, sin build
 ├── .nojekyll           Pages sirve tal cual
+├── .gitattributes      `* -text`: sin conversión de finales de línea  ← protege el hash de la CSP
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS
 ├── configurar.ps1      hace los pasos 6-10 de la puesta en marcha; los secretos los pide wrangler
-├── test-app.js         20 pruebas: saneado antes del DOM, manejo de claves
-├── test-worker.mjs     29 pruebas: identidad, clubes, secretos
+├── test-app.js         32 pruebas: saneado antes del DOM, claves, copias locales, perfil
+├── test-worker.mjs     40 pruebas: identidad, clubes, secretos, creación de clubes
 ├── worker/
 │   ├── src/index.js    el Worker
 │   ├── wrangler.toml   REPO, BRANCH, APP_URL, APP_ORIGIN
@@ -198,7 +222,9 @@ setStatus(id,userIds,status)  setProgress(id,userIds,{s,e})
 splitOut(id)  joinUsers(id,_,target)  setHype(id,_,v)  setRating(id,_,v)
 addNote(id,text)  removeNote(id,noteId)
 updateProfile({name,emoji,color})  createInvite()  removeUser(userId)
-// además: isDemo, hasTmdb, authFailed, repoName, retry, boot, unirse(perfil), hayInvitacion
+// además: isDemo, hasTmdb, authFailed, repoName, retry, boot
+// invitaciones: unirse(perfil)  hayInvitacion()  clubInvitado()  invitacionSobraba()
+// crear un club estando ya en otro: crearClub(nombre, {name,emoji,color})
 // clubes de este dispositivo (todo local, sin peticiones):
 //   grupos() → [{secret,group,activo}]   estadoDeClub(g) → estado saneado o null
 //   perfilDelDispositivo() → {name,emoji,color}|null
@@ -245,11 +271,12 @@ Secreto: `<club>.<24 caracteres>`. El club va dentro y determina el archivo que 
 tres al usar «seguir yo solo» · el `+1` avanza solo tu ficha y deja al resto donde estaba · la ruleta
 pondera y sortea · la CSP bloquea un script inyectado.
 
-**`test-worker.mjs`** (29): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
+**`test-worker.mjs`** (40): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
 la nota de nadie · el autor de un comentario lo pone el servidor · no se borra la nota de otro · quien
 no creó el club no echa a nadie · un club no ve los títulos ni la gente de otro · una clave con otro
 club por delante no entra · los secretos no salen en las respuestas ni en disco · expulsar invalida la
-clave al instante · los acentos sobreviven al base64.
+clave al instante · los acentos sobreviven al base64 · quien está en un club puede crear otro pero
+quien no tiene clave no, ni con una inventada, ni con la de alguien a quien echaron.
 
 **`test-app.js`** (32): saneadores contra entradas hostiles · varias claves conviviendo · renovar la
 clave de un club sustituye la vieja · una invitación se recoge pero no se guarda · cada club guarda
@@ -262,8 +289,20 @@ cruzada sale en el detalle y al añadir · salir de un club deja el otro intacto
 sin errores de consola, sin scroll horizontal a 390 px y con las zonas pulsables de la cabecera en
 44 px (que son 24 y 18 px de caja, ampliados con `::after`).
 
-**Lo que NO está verificado:** el viaje HTTP real contra GitHub y TMDB. Todo lo anterior corre contra
-simulaciones en memoria.
+**E2E real, 25 de julio de 2026**, contra el Worker, GitHub y TMDB de verdad, desde la URL pública:
+
+- el enlace mágico entra y **borra solo el `#s=` de la barra**
+- TMDB busca en español y trae carátulas · las plataformas (`watch/providers`) también llegan
+- cada operación aterriza en el repo privado, **un commit por operación**
+- `"Álex Muñoz"` y `🐙` sobreviven intactos a navegador → Worker → base64 → GitHub
+- en el repositorio sólo hay `secretHash`; la clave en claro no aparece
+- una invitación se canjea **una vez**: al segundo intento, `invitacion-invalida`
+- **la suplantación es inexpresable**: desde la clave de Nuria, colando el id de Álex en cuatro
+  parámetros distintos, sólo se puntuó a sí misma. La nota de Álex no se movió
+- un club no abre el archivo de otro, ni con travesía de directorios en el nombre
+- crear un club desde la interfaz, sin `ADMIN_KEY`, funciona y normaliza el nombre
+  («Cine de Barrio» → `cine-de-barrio`)
+- el archivo que sirve Pages es **byte a byte idéntico** al local y su hash de CSP cuadra
 
 ---
 
@@ -286,6 +325,22 @@ simulaciones en memoria.
 - `otrosIdx` (el índice de tus otros clubes) se calcula una vez y no se invalida. Es correcto porque
   cambiar de club **recarga la página**; si algún día el cambio deja de recargar, hay que invalidarlo.
 - El repo de datos necesita tener la rama `main` creada (un `README` vale) antes del primer club.
+- **La bienvenida es lo que canjea las invitaciones.** Si algún día se toca la condición que la
+  muestra, ojo: durante el E2E se descubrió que sólo aparecía cuando no tenías identidad válida, así
+  que en un móvil que ya estaba en un club **el enlace de invitación no hacía nada** — ni hoja, ni
+  aviso, ni clave. Entrar en un segundo club era imposible. Ahora la condición incluye
+  `Api.hayInvitacion()`, y quitarlo reabre el mismo agujero.
+- **Un `GET` no mide el alcance de un token de GitHub.** El repo de la app es público y responde 200
+  a cualquiera, con token o sin él. Para saber si un token puede escribir en un repositorio hay que
+  mandar un `PUT` con el cuerpo vacío: `422` significa autorizado (falló la validación), `403` que
+  no. Esa sonda no escribe nada. La comprobación equivocada estuvo un rato en la guía y hacía pensar
+  que el token estaba mal cuando estaba perfecto.
+- **En PowerShell, `curl` no es curl** — es `Invoke-WebRequest` disfrazado. Hay que escribir
+  `curl.exe`. Y mandar JSON por `-d` desde PowerShell es una fuente de disgustos con las comillas:
+  para eso está `Invoke-RestMethod`, que no tiene el problema.
+- `configurar.ps1` va en **UTF-8 con BOM** a propósito: PowerShell 5.1 lee los `.ps1` sin BOM como
+  ANSI y destroza los acentos hasta hacerlo irreparsable, antes incluso de llegar a la primera línea.
+  Si alguna herramienta se lo quita al editarlo, hay que devolvérselo.
 
 ---
 
@@ -294,3 +349,26 @@ simulaciones en memoria.
 Cualquier miembro de un club puede mover, añadir y **borrar títulos**. Es un tablero compartido, no un
 sistema de permisos por casilla. Y los enlaces son personales: si le pasas el tuyo a alguien, esa
 persona *es* tú.
+
+Un miembro puede además **crear clubes nuevos** en tu Worker, que escriben en tu repositorio. El tope
+de 200 es un cortafuegos, no un sistema de cuotas: si alguien a quien invitaste abusa, se le quita del
+club y sus clubes se borran a mano desde el repo.
+
+**Perder el móvil es perder la clave.** No hay recuperación por correo porque no hay correos: el
+remedio es que alguien del club te mande otra invitación. Y al revés, quien encuentre tu móvil
+desbloqueado entra en tus clubes — como en cualquier app que no vuelve a pedir contraseña.
+
+---
+
+## 11. Ideas que se estudiaron y se descartaron
+
+Por si vuelven a surgir, con el motivo:
+
+| idea | por qué no |
+|---|---|
+| Estado global por persona en vez de por club | rompe el aislamiento y filtra lo privado. Ver §5 |
+| Una cuenta que cruce clubes | cambia una garantía estructural por una comprobación. Ver §5 |
+| Que cualquiera cree clubes sin autenticarse | convierte el repo privado en almacenamiento gratis |
+| Dominio propio | el aislamiento de origen ya lo da la cuenta aparte, y cambiarlo después obliga a reinvitar a todo el mundo |
+| Un solo repositorio | Pages gratis exige repo público, y las notas y puntuaciones no pueden ser públicas |
+| Usar `gh` en esta carpeta | es el ayudante de credenciales global; ver `CLAUDE.md` |
