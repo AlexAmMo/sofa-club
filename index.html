@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0ZwIm+xfYRem/44L9XpTUf63Tm/OlhtlPRuc+mCY4ZM='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OL68huPguYdXLfrbEKcVzKidIkDMBmtO7BGn9UhPDNo='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -254,8 +254,12 @@ nav button.pri i{font-size:25px}
   will-change:transform;transition:transform .2s var(--spring)}
 /* la entrada se anima sólo al abrir la hoja, no cada vez que cambia algo dentro:
    la clase la pone el pintado a mano sobre el elemento recién creado */
-.ov.anim{animation:fadeIn .18s ease both}
-.sheet.anim{animation:sheetUp .24s var(--spring) both}
+/* «backwards» y no «both» a propósito: con «both» la animación se queda puesta
+   para siempre y, en la cascada, una animación gana a un estilo en línea — o
+   sea que el transform que escribe el arrastre no se veía y la hoja no seguía
+   al dedo. Con «backwards» sólo se rellena la entrada y luego suelta el mando. */
+.ov.anim{animation:fadeIn .18s ease backwards}
+.sheet.anim{animation:sheetUp .24s var(--spring) backwards}
 /* la zona de agarre es bastante más alta que la barrita que se ve: antes eran
    21 px y no había quien la cogiera */
 .handle{flex:none;padding:15px 0 11px;display:grid;place-items:center;cursor:grab;touch-action:none}
@@ -2460,9 +2464,13 @@ function empezarArrastre(e){
   window.addEventListener('pointercancel', soltarHoja);
 }
 function fijarHoja(hoja){
+  /* fuera la clase de entrada: mientras una animación esté corriendo sobre el
+     mismo transform, gana ella y la hoja se queda quieta por mucho que le
+     escribas el estilo. Esto es lo que hace que siga al dedo. */
+  hoja.classList.remove('anim');
   hoja.style.transition = 'none';
   const ov = hoja.parentElement;
-  if (ov) ov.style.transition = 'none';
+  if (ov){ ov.classList.remove('anim'); ov.style.transition = 'none'; }
 }
 function moverHoja(e){
   const a = arrastreHoja; if (!a) return;
@@ -2489,10 +2497,21 @@ function soltarHoja(){
   const alto = a.hoja.offsetHeight || 600;
   const ov = a.hoja.parentElement;
   /* o has recorrido un buen trozo, o la has soltado con ganas */
-  const cierra = a.dy > Math.min(130, alto * .22) || (a.v > .4 && a.dy > 18);
+  /* 0,55 px/ms son unos 550 px/s: un gesto claro de descarte. Con 0,4 se
+     colaban arrastres tranquilos de medio segundo y la hoja se iba sola. */
+  const cierra = a.dy > Math.min(130, alto * .22) || (a.v > .55 && a.dy > 30);
   if (!cierra){
-    a.hoja.style.transition = ''; a.hoja.style.transform = '';
-    if (ov){ ov.style.transition = ''; ov.style.opacity = ''; }
+    /* Devolver la curva y quitar el transform en el mismo tick no anima nada: el
+       navegador compara con la transición que había ANTES del cambio, que era
+       «none». Leer offsetHeight fuerza el recálculo en medio, así que la curva
+       ya cuenta cuando se quita el transform. Se hace así y no con
+       requestAnimationFrame para que la hoja vuelva a su sitio aunque el
+       navegador no esté dando fotogramas. */
+    a.hoja.style.transition = '';
+    if (ov) ov.style.transition = '';
+    void a.hoja.offsetHeight;
+    a.hoja.style.transform = '';
+    if (ov) ov.style.opacity = '';
     return;
   }
   blockClick = Date.now();          /* que el clic de después no reabra ni cierre nada */

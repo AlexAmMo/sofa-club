@@ -405,6 +405,20 @@ sin errores de consola, sin scroll horizontal a 390 px y con las zonas pulsables
 - **En PowerShell, `curl` no es curl** — es `Invoke-WebRequest` disfrazado. Hay que escribir
   `curl.exe`. Y mandar JSON por `-d` desde PowerShell es una fuente de disgustos con las comillas:
   para eso está `Invoke-RestMethod`, que no tiene el problema.
+- **Una animación CSS gana a un estilo en línea.** Está en la cascada por encima, así que mientras
+  `.sheet.anim` estuviera puesta con `animation-fill-mode:both`, el `transform` que escribe el
+  arrastre **no se veía**: la hoja no seguía al dedo aunque el atributo dijera lo contrario. Por eso
+  el relleno es `backwards` y no `both`, y por eso `fijarHoja()` quita la clase antes de arrastrar.
+  Ojo al comprobarlo: mirar `el.style.transform` no sirve de nada, hay que medir
+  `getBoundingClientRect()`.
+- **Restaurar la transición y cambiar la propiedad en el mismo tick no anima.** El navegador compara
+  con el estilo de *antes* del cambio, donde la transición era `none`. Entre las dos cosas hay que
+  forzar un recálculo leyendo `offsetHeight`. Se hace así y no con `requestAnimationFrame` para que
+  la hoja vuelva a su sitio aunque el navegador no esté dando fotogramas.
+- **El navegador de las pruebas no siempre pinta.** En las comprobaciones con Playwright se midió
+  **un fotograma en 300 ms**: todo lo que dependa de transiciones o animaciones queda congelado y da
+  resultados que parecen fallos. Lo que sí es fiable ahí es la geometría sin transición. Si una
+  medida de animación sale rara, comprueba primero el reloj de fotogramas.
 - **El alto de las hojas no se mide en `vh`, y hay motivo.** `100vh` es el viewport **grande**, el de
   la barra de URL escondida, mientras que `.ov` ocupa el visible. Con `92vh` la hoja podía pedir más
   alto del que había y, al estar pegada abajo con `align-items:flex-end`, desbordaba **hacia arriba**:
