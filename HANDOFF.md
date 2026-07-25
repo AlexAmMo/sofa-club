@@ -207,6 +207,16 @@ entrada de todo. Ahora el gesto escribe el estilo del elemento que se mueve y el
 al soltar, que es cuando de verdad ha pasado algo. Lo mismo con el arrastre de escritorio, el dock, la
 hoja que se baja con el dedo y las carátulas de la ruleta.
 
+**Por qué se puede arrastrar la hoja desde cualquier sitio.** Al principio sólo valía la barrita —21 px
+de alto— y había que recorrer 90 px enteros: en el móvil resultaba casi imposible cerrarla así. Ahora
+se arrastra desde todo el cuerpo de la hoja, que es lo que la gente intenta antes de buscar el
+tirador, y basta con soltarla con impulso (`v > .4 px/ms`) o recorrer un 22 % de su alto. Dos reglas
+sostienen el invento sin romper nada: **no se decide al tocar, se decide al mover** —descartar al
+`pointerdown` todo lo que fuera `[data-a]` dejaba el gesto reducido otra vez a la barrita, porque casi
+todo el contenido de una hoja está dentro de algo pulsable—, y sólo se arrastra **si el contenido está
+arriba del todo**; si está desplazado, tirar hacia abajo es leer. Los campos de texto quedan fuera,
+que ahí arrastrar significa seleccionar.
+
 **Por qué las hojas empujan una entrada en el historial.** Sin eso, el botón atrás del móvil hacía lo
 que hace en cualquier página: salirse — y en la app instalada, cerrarla. Ahora cada hoja abierta es
 una entrada, y **quien manda sobre cuántas hay abiertas es el historial**: al volver, `popstate` dice

@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WtS/pi+i6SzI2ZwH/X2V5/8lO1YQAa6Dbuu0Wbv1ONU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0ZwIm+xfYRem/44L9XpTUf63Tm/OlhtlPRuc+mCY4ZM='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -256,8 +256,11 @@ nav button.pri i{font-size:25px}
    la clase la pone el pintado a mano sobre el elemento recién creado */
 .ov.anim{animation:fadeIn .18s ease both}
 .sheet.anim{animation:sheetUp .24s var(--spring) both}
-.handle{flex:none;padding:10px 0 6px;display:grid;place-items:center;cursor:grab;touch-action:none}
-.handle i{width:44px;height:5px;border-radius:999px;background:#ffffff2b;display:block}
+/* la zona de agarre es bastante más alta que la barrita que se ve: antes eran
+   21 px y no había quien la cogiera */
+.handle{flex:none;padding:15px 0 11px;display:grid;place-items:center;cursor:grab;touch-action:none}
+.handle:active{cursor:grabbing}
+.handle i{width:52px;height:5px;border-radius:999px;background:#ffffff38;display:block}
 /* cerrar / volver: hasta ahora sólo se salía tocando fuera o arrastrando la
    barrita, y en un móvil eso no lo encuentra nadie */
 .xsheet{position:absolute;top:9px;right:9px;z-index:2;width:44px;height:44px;border-radius:999px;
@@ -2153,7 +2156,9 @@ document.addEventListener('click', (e) => {
   if (verb === 'cerrar'){ closeSheet(); return; }
   if (verb === 'atras'){ history.back(); return; }
   if (verb === 'close'){ if (e.target.closest('.sheet')) return; closeSheet(); return; }
-  if (Date.now() - blockClick < 320 && el.closest('[data-card]')) return;
+  /* tras un gesto no se cuela un clic: ni en las tarjetas ni en el fondo de una
+     hoja que se acaba de ir arrastrada */
+  if (Date.now() - blockClick < 320 && (el.closest('[data-card]') || el.closest('.ov'))) return;
   e.stopPropagation();
 
   const cardEl = el.closest('[data-card]');
@@ -2430,6 +2435,78 @@ const marcarDock = (key) => document.querySelectorAll('[data-dockt]').forEach((e
   el.classList.toggle('over', el.dataset.dockt === key);
 });
 
+/* ── arrastrar la hoja hacia abajo para cerrarla ──────────────────────────────
+   Antes sólo valía la barrita —21 px de alto— y había que recorrer 90 px
+   enteros: en el móvil era casi imposible. Ahora se arrastra desde cualquier
+   sitio de la hoja siempre que el contenido esté arriba del todo, que es lo que
+   la gente intenta antes de buscar la barrita, y basta con soltarla con
+   impulso. El fondo se va aclarando para que se vea venir el cierre.          */
+let arrastreHoja = null;
+function empezarArrastre(e){
+  const hoja = e.target.closest('[data-sheet]');
+  if (!hoja) return;
+  const enTirador = !!e.target.closest('[data-handle]');
+  /* No se decide aquí si esto es un botón o un arrastre: casi todo el contenido
+     de una hoja está dentro de algún [data-a], y descartarlo al tocar dejaba el
+     gesto reducido otra vez a la barrita. Se decide al MOVER — un toque sin
+     movimiento nunca activa nada y el clic sigue su camino. Sólo se aparta de
+     los campos de texto, donde arrastrar significa seleccionar. */
+  if (!enTirador && e.target.closest('input,textarea,select')) return;
+  arrastreHoja = { hoja:hoja, scr:hoja.querySelector('.scroll'), y0:e.clientY, dy:0,
+    tUlt:e.timeStamp, yUlt:e.clientY, v:0, activo:enTirador };
+  if (enTirador) fijarHoja(hoja);
+  window.addEventListener('pointermove', moverHoja, { passive:true });
+  window.addEventListener('pointerup', soltarHoja);
+  window.addEventListener('pointercancel', soltarHoja);
+}
+function fijarHoja(hoja){
+  hoja.style.transition = 'none';
+  const ov = hoja.parentElement;
+  if (ov) ov.style.transition = 'none';
+}
+function moverHoja(e){
+  const a = arrastreHoja; if (!a) return;
+  const dy = e.clientY - a.y0;
+  if (!a.activo){
+    /* se decide una vez: ¿esto es cerrar la hoja o leer lo que hay dentro? */
+    if (dy < -6 || (a.scr && a.scr.scrollTop > 0)) return quitarEscuchas();
+    if (dy < 7) return;
+    a.activo = true;
+    fijarHoja(a.hoja);
+  }
+  if (e.timeStamp > a.tUlt) a.v = (e.clientY - a.yUlt) / (e.timeStamp - a.tUlt);
+  a.tUlt = e.timeStamp; a.yUlt = e.clientY;
+  a.dy = Math.max(0, dy);
+  a.hoja.style.transform = 'translateY(' + a.dy + 'px)';
+  const ov = a.hoja.parentElement;
+  if (ov) ov.style.opacity = String(Math.max(.3, 1 - a.dy / ((a.hoja.offsetHeight || 600) * .85)));
+}
+function soltarHoja(){
+  const a = arrastreHoja;
+  quitarEscuchas();
+  arrastreHoja = null;
+  if (!a || !a.activo) return;
+  const alto = a.hoja.offsetHeight || 600;
+  const ov = a.hoja.parentElement;
+  /* o has recorrido un buen trozo, o la has soltado con ganas */
+  const cierra = a.dy > Math.min(130, alto * .22) || (a.v > .4 && a.dy > 18);
+  if (!cierra){
+    a.hoja.style.transition = ''; a.hoja.style.transform = '';
+    if (ov){ ov.style.transition = ''; ov.style.opacity = ''; }
+    return;
+  }
+  blockClick = Date.now();          /* que el clic de después no reabra ni cierre nada */
+  a.hoja.style.transition = 'transform .16s ease-in';
+  a.hoja.style.transform = 'translateY(' + alto + 'px)';
+  if (ov){ ov.style.transition = 'opacity .16s ease'; ov.style.opacity = '0'; }
+  setTimeout(closeSheet, 140);
+}
+function quitarEscuchas(){
+  window.removeEventListener('pointermove', moverHoja);
+  window.removeEventListener('pointerup', soltarHoja);
+  window.removeEventListener('pointercancel', soltarHoja);
+}
+
 let G = null, lpT = null, moved = false;
 function detach(){ window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp); }
 function endGesture(){
@@ -2439,20 +2516,7 @@ function endGesture(){
   if (S.drag || S.dock) setS({ drag:null, dock:null });
 }
 document.addEventListener('pointerdown', (e) => {
-  const handle = e.target.closest('[data-handle]');
-  if (handle){
-    const y0 = e.clientY;
-    const hoja = handle.closest('[data-sheet]');
-    if (hoja) hoja.style.transition = 'none';
-    const mv = (ev) => { if (hoja) hoja.style.transform = 'translateY(' + Math.max(0, ev.clientY - y0) + 'px)'; };
-    const up = (ev) => {
-      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
-      if (hoja){ hoja.style.transition = ''; hoja.style.transform = ''; }
-      if (Math.max(0, ev.clientY - y0) > 90) closeSheet();
-    };
-    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
-    return;
-  }
+  if (e.target.closest('[data-sheet]')){ if (e.button === 0) empezarArrastre(e); return; }
   const cardEl = e.target.closest('[data-card]');
   if (cardEl){
     if (e.button > 0 || e.target.closest('[data-a]')) return;
