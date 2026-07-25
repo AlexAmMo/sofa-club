@@ -129,5 +129,33 @@ api9.olvidarTodo({ secrets: [buena, otra] });
 ok('salir del dispositivo se lleva claves, perfil y todas las copias locales',
   !api9.store['sc.cfg'] && !api9.store['sc.me'] && !api9.store['sc.cache.pareja'] && !api9.store['sc.cache.amigos']);
 
+/* ── 6. numeración de episodios ──
+   absEp y epTxt viven con la interfaz, fuera del bloque puro, así que se
+   extraen por su nombre y se evalúan solas: se prueba el código de verdad, no
+   una copia que se quedaría vieja sin que nadie se enterase.                  */
+console.log('\n  — numeración de episodios —');
+const fn = (nombre) => {
+  const i = js.indexOf('function ' + nombre + '(');
+  if (i < 0) { console.error('no encuentro ' + nombre + ' en index.html'); process.exit(1); }
+  return js.slice(i, js.indexOf('\n}', i) + 2);
+};
+const N = {};
+vm.runInContext(fn('absEp') + fn('epTxt') + '\nthis.absEp = absEp; this.epTxt = epTxt;', vm.createContext(N));
+
+/* One Piece según TMDB: temporadas largas y el reproductor contando en absoluto */
+const op = { seasons: [{ number:1, episodes:61 }, { number:2, episodes:16 }, { number:3, episodes:53 }] };
+ok('el número absoluto suma las temporadas anteriores', N.absEp(op, { s:3, e:5 }) === 82, String(N.absEp(op, { s:3, e:5 })));
+ok('en la primera temporada es el propio episodio', N.absEp(op, { s:1, e:7 }) === 7);
+ok('sin empezar, cero', N.absEp(op, { s:1, e:0 }) === 0);
+ok('y sin temporadas conocidas no se inventa nada', N.absEp({ seasons:null }, { s:2, e:3 }) === 0);
+
+ok('la etiqueta lleva el número absoluto cuando hay temporadas por detrás',
+  N.epTxt(op, { s:3, e:5 }) === 'T3 E5 · nº 82', N.epTxt(op, { s:3, e:5 }));
+ok('pero no lo repite si sería el mismo número',
+  N.epTxt(op, { s:1, e:7 }) === 'T1 E7', N.epTxt(op, { s:1, e:7 }));
+ok('el separador se puede cambiar sin tocar el resto',
+  N.epTxt(op, { s:3, e:5 }, ' · E') === 'T3 · E5 · nº 82', N.epTxt(op, { s:3, e:5 }, ' · E'));
+ok('sin progreso empieza por el principio', N.epTxt(op, null) === 'T1 E0');
+
 console.log('\n' + (fallos ? fallos + ' PRUEBA(S) FALLIDA(S)' : 'todas las pruebas del navegador pasan'));
 process.exit(fallos ? 1 : 0);

@@ -21,8 +21,8 @@ Uso principal: **el móvil**, añadido a la pantalla de inicio.
 | | |
 |---|---|
 | Interfaz | completa, verificada en navegador y **en producción** |
-| Worker | completo, 40 pruebas contra GitHub y TMDB simulados |
-| Navegador | 32 pruebas de saneado, claves, copias locales y perfil |
+| Worker | completo, 44 pruebas contra GitHub y TMDB simulados |
+| Navegador | 40 pruebas de saneado, claves, copias locales, perfil y numeración |
 | Despliegue | **hecho**: Worker en Cloudflare, app en Pages, dos repos en la cuenta AlexAmMo |
 | E2E real | **hecho** el 25 de julio de 2026 contra GitHub, Cloudflare y TMDB de verdad |
 
@@ -88,6 +88,7 @@ la autoría de los comentarios y el perfil.
 | Buscar y añadir en hojas **separadas** | confusión real: una busca en el catálogo, la otra en lo que ya tenéis |
 | Diseño sin límite de personas | decisión explícita del usuario, sabiendo que enfría algo la interfaz |
 | Borrado con confirmación **y deshacer de 6 s** | `removeItem` solo se llama al expirar el plazo |
+| El progreso enseña temporada **y número absoluto**: «T22 · E5 · nº 1093» | quien ve anime tiene delante un reproductor que dice «episodio 1093», no «T22 E5». Ver §5 |
 
 **Móvil (<900px):** pestañas por estado con contador · deslizar la tarjeta avanza o retrocede de
 estado · pulsación larga (350 ms) levanta la tarjeta y abre un dock con los cuatro destinos ·
@@ -173,6 +174,19 @@ decir, demuestra que alguien te invitó. La puerta ya la guarda la invitación; 
 ella. Hay además un tope de 200 clubes como cortafuegos, por si alguien invitado se desmadra. El
 primer club de todos sigue siendo cosa de `/admin/group`.
 
+**Por qué el progreso enseña dos números.** TMDB modela el anime por temporadas, como una serie
+occidental, pero quien lo ve cuenta en absoluto: el reproductor dice «episodio 1093», no «T22 E5». Y
+TMDB no es coherente ni consigo mismo — en One Piece los episodios llevan numeración absoluta dentro
+de la temporada y en Naruto o Hunter x Hunter no —, así que no hay regla que escribir. El número
+absoluto ya se calculaba (`absEp`, para la barra de progreso); lo único que faltaba era enseñarlo.
+`epTxt` lo añade **sólo cuando aporta**: en una serie de una temporada sería decir dos veces el mismo
+número. No hace falta ningún proveedor nuevo ni cambia el formato de datos.
+
+**Por qué el buscador mira una segunda página, pero no siempre.** TMDB ordena por popularidad y
+mezcla personas entre los resultados, así que una temporada concreta de una franquicia grande cae a
+menudo por debajo del puesto 20. Se pide la segunda página **sólo si la primera no llenó la lista**:
+la mayoría de búsquedas siguen siendo una única petición y la segunda se paga cuando hacía falta.
+
 **Por qué CSP con hash.** GitHub Pages no permite cabeceras, así que va en un `<meta>` con el SHA-256
 del bloque de script. Bloquea cualquier script inyectado, y `connect-src` limita la salida al Worker.
 
@@ -191,8 +205,8 @@ sofa-club/
 ├── .gitattributes      `* -text`: sin conversión de finales de línea  ← protege el hash de la CSP
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS
 ├── configurar.ps1      hace los pasos 6-10 de la puesta en marcha; los secretos los pide wrangler
-├── test-app.js         32 pruebas: saneado antes del DOM, claves, copias locales, perfil
-├── test-worker.mjs     40 pruebas: identidad, clubes, secretos, creación de clubes
+├── test-app.js         40 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios
+├── test-worker.mjs     44 pruebas: identidad, clubes, secretos, creación de clubes, buscador
 ├── worker/
 │   ├── src/index.js    el Worker
 │   ├── wrangler.toml   REPO, BRANCH, APP_URL, APP_ORIGIN
@@ -271,17 +285,22 @@ Secreto: `<club>.<24 caracteres>`. El club va dentro y determina el archivo que 
 tres al usar «seguir yo solo» · el `+1` avanza solo tu ficha y deja al resto donde estaba · la ruleta
 pondera y sortea · la CSP bloquea un script inyectado.
 
-**`test-worker.mjs`** (40): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
+**`test-worker.mjs`** (44): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
 la nota de nadie · el autor de un comentario lo pone el servidor · no se borra la nota de otro · quien
 no creó el club no echa a nadie · un club no ve los títulos ni la gente de otro · una clave con otro
 club por delante no entra · los secretos no salen en las respuestas ni en disco · expulsar invalida la
 clave al instante · los acentos sobreviven al base64 · quien está en un club puede crear otro pero
-quien no tiene clave no, ni con una inventada, ni con la de alguien a quien echaron.
+quien no tiene clave no, ni con una inventada, ni con la de alguien a quien echaron · el buscador
+nunca devuelve personas, mira la segunda página cuando la primera no llena la lista y no repite un
+título que salga en las dos.
 
-**`test-app.js`** (32): saneadores contra entradas hostiles · varias claves conviviendo · renovar la
+**`test-app.js`** (40): saneadores contra entradas hostiles · varias claves conviviendo · renovar la
 clave de un club sustituye la vieja · una invitación se recoge pero no se guarda · cada club guarda
 su copia local y una copia manipulada se sanea al leerla · salir de un club se lleva su clave y su
-copia y no toca las demás · el perfil del dispositivo se recuerda con acentos y se sanea.
+copia y no toca las demás · el perfil del dispositivo se recuerda con acentos y se sanea · el número
+absoluto de episodio suma bien las temporadas anteriores y no se enseña cuando sería el mismo número
+(`absEp` y `epTxt` se extraen de `index.html` por su nombre y se evalúan solas, para probar el código
+de verdad y no una copia que envejecería en silencio).
 
 **En navegador, con dos clubes sembrados y un Worker de mentira en local:** el chip del club aparece
 sólo con más de uno · cambiar de club repinta el tablero al instante desde la copia local · la pista

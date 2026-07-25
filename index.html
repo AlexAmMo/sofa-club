@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oucpzWHGpkwuiq+u9+hZcbef/Gw0sXzb6oRO690pwZ8='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KtJnySgd2SGxC49iRAmwYvIftCBdJuhvloKn/zgoIuQ='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -929,7 +929,8 @@ function otrosClubes(tmdbId){
       st.items.forEach((i) => {
         const p = i.participants[st.me];
         if (!p || !i.tmdbId) return;
-        (otrosIdx[i.tmdbId] = otrosIdx[i.tmdbId] || []).push({ group:g.group, p:p });
+        /* las temporadas viajan con la pista: sin ellas no hay número absoluto */
+        (otrosIdx[i.tmdbId] = otrosIdx[i.tmdbId] || []).push({ group:g.group, p:p, seasons:i.seasons });
       });
     });
   }
@@ -938,7 +939,7 @@ function otrosClubes(tmdbId){
 function fraseOtroClub(x){
   const c = COL(x.p.status);
   let t = 'en «' + x.group + '» la tienes en ' + c.emoji + ' ' + c.label.toLowerCase();
-  if (x.p.status === 'watching' && x.p.progress) t += ', por la T' + x.p.progress.s + ' E' + x.p.progress.e;
+  if (x.p.status === 'watching' && x.p.progress) t += ', por la ' + epTxt({ seasons:x.seasons }, x.p.progress);
   if (x.p.rating) t += ', con ' + STARS(x.p.rating);
   return t;
 }
@@ -946,6 +947,14 @@ function absEp(it, pr){
   if (!pr || !it.seasons) return 0;
   let n = 0; it.seasons.forEach((s) => { if (s.number < pr.s) n += s.episodes; });
   return n + pr.e;
+}
+/* «T22 E5» no le sirve a nadie que vea anime: el reproductor dice «episodio
+   1093». El número absoluto ya sabíamos calcularlo, sólo faltaba enseñarlo —
+   y sólo cuando aporta algo, que en una serie de una temporada sería decir
+   dos veces el mismo número. */
+function epTxt(it, pr, sep){
+  const s = pr ? pr.s : 1, e = pr ? pr.e : 0, n = absEp(it, pr);
+  return 'T' + s + (sep || ' E') + e + (n > e ? ' · nº ' + n : '');
 }
 function step(it, pr, dir){
   const ss = it.seasons || [];
@@ -1076,7 +1085,8 @@ function cardHtml(it, status, order, users){
       const keys = Object.keys(byProg);
       const total = it.totalEpisodes || 1;
       const mk = (us) => { const p = it.participants[us[0]]; const n = absEp(it, p.progress);
-        return { label:'T' + (p.progress ? p.progress.s : 1) + ' · E' + (p.progress ? p.progress.e : 0), counter:n + '/' + total, pct:Math.round((n / total) * 100) }; };
+        return { label:'T' + (p.progress ? p.progress.s : 1) + ' · E' + (p.progress ? p.progress.e : 0),
+          counter:'nº ' + n + '/' + total, pct:Math.round((n / total) * 100) }; };
       if (keys.length === 1){
         const r = mk(users);
         body += '<div class="epline"><div style="flex:1;min-width:0">'
@@ -1127,8 +1137,8 @@ function cardHtml(it, status, order, users){
   others.slice(0, 2).forEach((u) => {
     const p = it.participants[u], uu = user(u);
     if (p.status === 'done') bits.push(uu.emoji + ' ya la vio' + (p.rating ? ' y le puso ' + STARS(p.rating).replace(/☆/g, '') : ''));
-    else if (p.status === 'dropped') bits.push(uu.emoji + ' la dejó' + (p.progress ? ' en el ' + p.progress.e : ''));
-    else if (p.status === 'watching') bits.push(uu.emoji + ' va por T' + (p.progress ? p.progress.s + ' · E' + p.progress.e : '1'));
+    else if (p.status === 'dropped') bits.push(uu.emoji + ' la dejó' + (p.progress ? ' en el ' + (absEp(it, p.progress) || p.progress.e) : ''));
+    else if (p.status === 'watching') bits.push(uu.emoji + ' va por ' + (p.progress ? epTxt(it, p.progress, ' · E') : 'T1'));
     else bits.push(uu.emoji + ' la quiere ver');
   });
   if (bits.length) body += '<div class="elsew"><span style="opacity:.6;flex:none">⤵</span><span class="pretty">'
@@ -1335,7 +1345,7 @@ function detailHtml(){
       + '<span class="av s34" style="--c:' + uu.color + '">' + uu.emoji + '</span>'
       + '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px">' + esc(uu.name + (you ? ' (tú)' : '')) + '</div>'
       + '<div style="font-size:11.5px;font-weight:700;color:' + cc + '">' + COL(p.status).emoji + ' ' + COL(p.status).label
-        + (p.progress ? ' · T' + p.progress.s + ' E' + p.progress.e : '')
+        + (p.progress ? ' · ' + epTxt(it, p.progress) : '')
         + (p.status === 'wish' ? ' · ganas ' + '💗'.repeat(p.hype) : '') + '</div></div>'
       + (p.rating ? '<span style="font-size:14px;color:var(--done);letter-spacing:1px;flex:none">' + STARS(p.rating) + '</span>' : '')
       + '</div>';

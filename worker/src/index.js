@@ -20,6 +20,7 @@
 const GH = 'https://api.github.com';
 const TMDB = 'https://api.themoviedb.org/3';
 const VERSION = 3;
+const TOPE_BUSQUEDA = 14;          // resultados que se devuelven al navegador
 
 /* ── utilidades ─────────────────────────────────────────────────────────────── */
 const nowIso = () => new Date().toISOString();
@@ -434,10 +435,22 @@ export default {
         await identificar(env, req);
         const q = okStr(url.searchParams.get('q'), 120).trim();
         if (!q) return json({ results: [] }, 200, cab);
-        const j = await tmdb(env, '/search/multi', { query: q, include_adult: 'false', page: '1' });
-        const results = (j.results || [])
-          .filter((r) => r.media_type === 'tv' || r.media_type === 'movie')
-          .slice(0, 14)
+        /* TMDB ordena por popularidad y mezcla personas entre los resultados, así
+           que una temporada concreta de una franquicia grande cae a menudo en la
+           segunda página. Sólo se pide cuando la primera no da para llenar la
+           lista: lo normal es seguir haciendo una sola petición. */
+        const utiles = (j) => (j.results || []).filter((r) => r.media_type === 'tv' || r.media_type === 'movie');
+        const pagina = (n) => tmdb(env, '/search/multi', { query: q, include_adult: 'false', page: String(n) });
+        const j1 = await pagina(1);
+        let crudos = utiles(j1);
+        if (crudos.length < TOPE_BUSQUEDA && (j1.total_pages || 1) > 1){
+          try { crudos = crudos.concat(utiles(await pagina(2))); }
+          catch (e){ /* con una página nos apañamos */ }
+        }
+        const vistos = {};
+        const results = crudos
+          .filter((r) => !vistos[r.media_type + r.id] && (vistos[r.media_type + r.id] = 1))
+          .slice(0, TOPE_BUSQUEDA)
           .map((r) => ({ tmdbId: r.id, type: r.media_type,
             title: okStr(r.title || r.name, 160), originalTitle: okStr(r.original_title || r.original_name || r.title || r.name, 160),
             year: Number(String(r.release_date || r.first_air_date || '').slice(0, 4)) || null,

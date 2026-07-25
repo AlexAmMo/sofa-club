@@ -7,6 +7,10 @@ Cada persona tiene **su propio estado y su propio progreso** en cada título. La
 solo control cuando coincidís y se desdobla en uno por persona cuando no. Un mismo título puede
 aparecer a la vez en varias columnas, y eso es correcto.
 
+El progreso enseña la temporada, el episodio y también **el número absoluto** — «T22 · E5 · nº 1093»
+—, porque quien ve anime tiene delante un reproductor que cuenta así. Solo aparece cuando aporta
+algo: en una serie de una temporada sería decir dos veces el mismo número.
+
 ---
 
 ## Las tres piezas
@@ -170,8 +174,8 @@ De regalo, el `git log` del repo es el historial de vuestros clubes.
 ## Pruebas
 
 ```bash
-node test-worker.mjs    # 28 · identidad, aislamiento entre clubes, secretos
-node test-app.js        # 32 · saneado antes del DOM, claves, copias locales y perfil
+node test-worker.mjs    # 44 · identidad, aislamiento entre clubes, secretos, buscador
+node test-app.js        # 40 · saneado antes del DOM, claves, copias locales, perfil, episodios
 ```
 
 `test-worker.mjs` levanta un GitHub y un TMDB de mentira en memoria y comprueba lo prometido: que

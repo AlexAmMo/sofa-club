@@ -50,12 +50,17 @@ globalThis.fetch = async (url, opts) => {
   if (u.hostname === 'api.themoviedb.org'){
     if (u.pathname.startsWith('/3/search/multi')){
       const q = (u.searchParams.get('query') || '').toLowerCase();
-      const results = Object.values(FICHAS)
+      const pag = Number(u.searchParams.get('page') || '1');
+      const todas = Object.values(FICHAS)
         .filter((f) => ((f.name || f.title) + ' ' + (f.original_name || f.original_title)).toLowerCase().includes(q))
         .map((f) => ({ id: f.id, media_type: f.name ? 'tv' : 'movie', name: f.name, title: f.title,
           original_name: f.original_name, original_title: f.original_title,
           first_air_date: f.first_air_date, release_date: f.release_date, poster_path: f.poster_path }));
-      return new Response(JSON.stringify({ results }), { status: 200 });
+      /* una ficha por página, y una persona colada en la primera: así se ve si
+         el Worker pasa a la segunda página y si filtra a las personas */
+      const results = todas.slice(pag - 1, pag);
+      if (pag === 1) results.push({ id: 999, media_type: 'person', name: 'Un actor famosísimo' });
+      return new Response(JSON.stringify({ results, page: pag, total_pages: todas.length || 1 }), { status: 200 });
     }
     const id = Number(u.pathname.split('/').pop());
     const f = FICHAS[id];
@@ -215,6 +220,17 @@ ok('el club nuevo no ve los títulos del viejo',
   (await pedir('/api/session', { clave: claveCurro })).body.state.items.length === 0);
 ok('y el viejo sigue sin enterarse del nuevo',
   !JSON.stringify((await pedir('/api/session', { clave: claveAlex })).body).includes('curro'));
+
+/* ══ 6. el buscador ══ */
+console.log('\n  — buscador —');
+const busq = await pedir('/api/search?q=a', { metodo: 'GET', clave: claveAlex });
+ok('la búsqueda sólo devuelve series y películas, nunca personas',
+  busq.body.results.every((r) => r.type === 'tv' || r.type === 'movie'), JSON.stringify(busq.body.results));
+ok('si la primera página no llena la lista, se mira la segunda',
+  busq.body.results.length === 2 && busq.body.results.some((r) => r.tmdbId === 915935), JSON.stringify(busq.body.results));
+ok('un mismo título no sale dos veces aunque aparezca en las dos páginas',
+  new Set(busq.body.results.map((r) => r.type + r.tmdbId)).size === busq.body.results.length);
+ok('sin clave no se busca', (await pedir('/api/search?q=a', { metodo: 'GET' })).status === 401);
 
 console.log('\n' + (fallos ? fallos + ' PRUEBA(S) FALLIDA(S)' : 'todas las pruebas del Worker pasan'));
 process.exit(fallos ? 1 : 0);
