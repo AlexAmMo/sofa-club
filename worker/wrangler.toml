@@ -13,7 +13,10 @@ APP_URL = "https://alexammo.github.io/sofa-club/"
 # EN MINÚSCULAS, siempre: esto se compara letra a letra contra la cabecera
 # Origin que manda el navegador, y el navegador la manda siempre en minúsculas.
 # Con una mayúscula aquí, CORS bloquea todo y la app abre pero no guarda nada.
-APP_ORIGIN = "https://alexammo.github.io"
+# El segundo es el servidor de desarrollo (`node servir.js`) para probar en el
+# móvil sin esperar a que Pages construya. Quítalo cuando dejes de usarlo: es un
+# origen sin cifrar y no tiene por qué seguir invitado eternamente.
+APP_ORIGIN = "https://alexammo.github.io,http://192.168.1.46:8788"
 
 # Los tres secretos NO van aquí. Se ponen con:
 #   npx wrangler secret put GITHUB_TOKEN
