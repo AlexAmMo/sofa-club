@@ -5,7 +5,12 @@ independientes** — la pareja por un lado, los amigos por otro — que no se ve
 
 Cada persona tiene **su propio estado y su propio progreso** en cada título. La interfaz muestra un
 solo control cuando coincidís y se desdobla en uno por persona cuando no. Un mismo título puede
-aparecer a la vez en varias columnas, y eso es correcto.
+aparecer a la vez en varias columnas, y eso es correcto; lo que ya no hace es duplicarse dentro de
+una: es **una tarjeta con una fila por ritmo**.
+
+Las **ganas van de 1 a 5**. Fueron de 1 a 3, así que lo guardado antes sigue valiendo pero se queda
+corto: un 3 de entonces era el máximo y ahora es el medio. No se migra nada a propósito — subirle el
+entusiasmo a alguien que no lo dijo es peor que quedarse corto.
 
 El progreso enseña la temporada, el episodio y también **el número absoluto** — «T22 · E5 · nº 1093»
 —, porque quien ve anime tiene delante un reproductor que cuenta así. Solo aparece cuando aporta
@@ -166,7 +171,11 @@ guarda. Sirve para enseñarlo antes de montar nada.
 - **Refresco** al recuperar el foco y cada 60 s.
 - **Secretos.** En el repo solo se guarda un hash SHA-256; la clave en claro no está en ningún sitio
   salvo en el móvil de su dueño. Echar a alguien invalida su clave al instante.
-- **TMDB** lo proxea el Worker, con caché de seis horas en el borde.
+- **TMDB** lo proxea el Worker, con caché de seis horas en el borde. Se puede buscar por título
+  (`/api/search`) o **sólo con filtros** — categoría, década, nota, plataforma — sin escribir nada
+  (`/api/discover`). Los dos paginan de verdad: «ver más» pide la página siguiente, no recorta una
+  lista que ya estaba entera. Los nombres de plataforma se traducen a los ids de TMDB
+  preguntándoselo a TMDB, no con una tabla nuestra, porque esos nombres cambian.
 
 De regalo, el `git log` del repo es el historial de vuestros clubes.
 
@@ -175,8 +184,8 @@ De regalo, el `git log` del repo es el historial de vuestros clubes.
 ## Pruebas
 
 ```bash
-node test-worker.mjs    # 44 · identidad, aislamiento entre clubes, secretos, buscador
-node test-app.js        # 45 · saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
+node test-worker.mjs    # 69 · identidad, aislamiento entre clubes, secretos, buscador, catálogo
+node test-app.js        # 52 · saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
 ```
 
 `test-worker.mjs` levanta un GitHub y un TMDB de mentira en memoria y comprueba lo prometido: que

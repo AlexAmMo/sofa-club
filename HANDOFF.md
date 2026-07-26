@@ -20,9 +20,9 @@ Uso principal: **el móvil**, añadido a la pantalla de inicio.
 
 | | |
 |---|---|
-| Interfaz | completa, verificada en navegador y **en producción** |
-| Worker | completo, 44 pruebas contra GitHub y TMDB simulados |
-| Navegador | 45 pruebas de saneado, claves, copias locales, perfil, numeración y hojas |
+| Interfaz | completa; el rediseño del 26 de julio está **sin verificar contra el Worker de verdad** |
+| Worker | completo, 69 pruebas contra GitHub y TMDB simulados. **Pendiente de desplegar** |
+| Navegador | 52 pruebas de saneado, claves, copias locales, perfil, numeración y hojas |
 | Despliegue | **hecho**: Worker en Cloudflare, app en Pages, dos repos en la cuenta AlexAmMo |
 | E2E real | **hecho** el 25 de julio de 2026 contra GitHub, Cloudflare y TMDB de verdad |
 
@@ -41,6 +41,18 @@ En producción:
    `ADMIN_KEY` con `wrangler secret put`.
 2. **Crear el club de verdad** con la `ADMIN_KEY` nueva y repartir invitaciones. Ese enlace no se
    pega en ningún chat: quien lo tiene *es* su dueño.
+3. **Desplegar el Worker antes de que la app llegue a Pages.** La versión del 26 de julio pide cosas
+   que el Worker sólo sabe hacer desde ese mismo día: ganas hasta 5, `leaveItem` y `/api/discover`.
+   Con el Worker viejo, el quinto corazón responde 400 y el cambio se deshace solo delante del
+   usuario. El orden es `cd worker && npx wrangler deploy` **y después** empujar a `main`; al revés
+   hay una ventana con la app rota en producción.
+4. **Quitar los orígenes de desarrollo de `worker/wrangler.toml`.** `APP_ORIGIN` arrastra la IP local
+   y un túnel de Cloudflare que ya está muerto. No abre nada —un origen que no existe no lo usa
+   nadie— pero es ruido en un sitio donde el ruido se confunde con permiso.
+5. **Decidir si vuelve el aviso de demo.** Al iterar el diseño se quitaron la franja amarilla y el
+   «modo demo · nada se guarda» de la cabecera, que ahora dice «3 personas · todo al día». Quien abra
+   la URL pública sin clave ve un tablero que parece vivo y no guarda nada. Se repone condicionando
+   la franja a `Api.isDemo()`.
 
 Decisión aplazada: **dominio propio**. Se puede acortar la URL sin comprar nada renombrando el repo
 a `alexammo.github.io` (se serviría en la raíz), y eso **no** rompe las claves de nadie porque el
@@ -81,7 +93,7 @@ la autoría de los comentarios y el perfil.
 | Las pelis no pasan por «Viendo» | su botón es «ya la hemos visto» y saltan a Terminado |
 | Nota por persona **y** media del grupo, también en «Dejada» | puntuar algo que abandonaste explica por qué lo abandonaste |
 | Umbral de «aquí hubo debate 🥊»: horquilla > 2 | y su contrario, «todos igual, qué bonito 🫶», cuando coinciden exactamente |
-| Ganas de 1 a 3 corazones en la wishlist | alimentan la ruleta, que pondera por la suma de los presentes |
+| Ganas de 1 a 5 corazones en la wishlist | alimentan la ruleta, que pondera por la suma de los presentes. Fueron 1–3 hasta el 26 de julio; lo guardado antes no se migró |
 | Notas = hilo de comentarios con autor | con N personas, un campo de texto compartido y pisable no aguanta |
 | Ruleta: primero **quién ve esta noche** | con grupos, el sorteo tiene que pesar solo las ganas de los que están en el sofá |
 | Estadísticas con conmutador mías / del grupo | |
@@ -95,10 +107,25 @@ estado · pulsación larga (350 ms) levanta la tarjeta y abre un dock con los cu
 deslizar el fondo cambia de pestaña · barra inferior de 5 secciones con el «+» central.
 **Escritorio (≥900px):** kanban de cuatro columnas con arrastre real.
 
+**Las cinco secciones son secciones, no ventanas** (desde el 26 de julio). Ruleta, añadir, datos y
+ajustes se abrían como hojas encima del tablero, igual que en escritorio, y la barra inferior no
+llevaba a ninguna parte: apilaba ventanas. Ahora ocupan la pantalla (`S.view`) y el atrás del móvil
+devuelve a la sección anterior. Siguen siendo hojas las tres que sí son ventanas sobre algo: el
+detalle de un título, buscar/filtrar y las confirmaciones. **En escritorio no cambia nada**: no hay
+barra inferior y esas cuatro se siguen lanzando como hojas desde la cabecera.
+
 Todos los gestos con **Pointer Events**, nunca con la API de drag & drop de HTML5: una sola
 implementación para ratón y dedo, y control total de la animación.
 
-**Estética:** cuatro paletas conmutables con `data-theme`; por defecto **Neón de medianoche**.
+**Estética:** seis temas conmutables con `data-theme`, todos **con fondo en movimiento** y teñidos del
+color de la columna o sección donde estés; por defecto **Cosmos**. Sustituyen a las cuatro paletas
+planas de antes, que se retiraron: quien tuviera una guardada cae en Cosmos sin romper nada. *Cometa*
+es un shader escrito a mano contra WebGL — sin librerías, sin CDN y sin tocar la CSP — que se apaga
+solo si no hay WebGL, si la pestaña no se ve o si hay `prefers-reduced-motion`.
+
+Botones **sin caja**: icono arriba, texto debajo, y el estado activo marcado con el color de la
+sección y una línea fina, nunca con relleno. Sólo conservan fondo los dos botones que confirman algo.
+
 Nunito 400/600/800. Radios 20/28/999. Curva de muelle `cubic-bezier(.34,1.56,.64,1)`.
 `prefers-reduced-motion` desactiva todo. La animación de **partirse y reunirse** una tarjeta es el
 gesto característico: no debe leerse como un refresco de lista.
@@ -242,8 +269,8 @@ sofa-club/
 ├── .gitattributes      `* -text`: sin conversión de finales de línea  ← protege el hash de la CSP
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS
 ├── servir.js           servidor local con `no-store`, para probar en el móvil sin esperar a Pages
-├── test-app.js         45 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
-├── test-worker.mjs     44 pruebas: identidad, clubes, secretos, creación de clubes, buscador
+├── test-app.js         52 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
+├── test-worker.mjs     69 pruebas: identidad, clubes, secretos, creación de clubes, buscador, catálogo
 ├── worker/
 │   ├── src/index.js    el Worker
 │   ├── wrangler.toml   REPO, BRANCH, APP_URL, APP_ORIGIN
@@ -291,7 +318,8 @@ POST /api/group     Bearer <secreto>    { group, name, emoji, color }           
 POST /api/session   Bearer <secreto>                                                 → { state, group }
 POST /api/join                          { invite, name, emoji, color }               → { secret, state }
 POST /api/op        Bearer <secreto>    { op, args }                                 → { state, ...extra }
-GET  /api/search    Bearer <secreto>    ?q=                                          → { results }
+GET  /api/search    Bearer <secreto>    ?q=&page=                                    → { results }
+GET  /api/discover  Bearer <secreto>    ?type=&genres=&provs=&rateMin=&dec=&sort=&page= → { results }
 POST /api/refresh   Bearer <secreto>                                                 → { state }
 ```
 
@@ -321,16 +349,19 @@ Secreto: `<club>.<24 caracteres>`. El club va dentro y determina el archivo que 
 tres al usar «seguir yo solo» · el `+1` avanza solo tu ficha y deja al resto donde estaba · la ruleta
 pondera y sortea · la CSP bloquea un script inyectado.
 
-**`test-worker.mjs`** (44): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
+**`test-worker.mjs`** (69): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
 la nota de nadie · el autor de un comentario lo pone el servidor · no se borra la nota de otro · quien
 no creó el club no echa a nadie · un club no ve los títulos ni la gente de otro · una clave con otro
 club por delante no entra · los secretos no salen en las respuestas ni en disco · expulsar invalida la
 clave al instante · los acentos sobreviven al base64 · quien está en un club puede crear otro pero
 quien no tiene clave no, ni con una inventada, ni con la de alguien a quien echaron · el buscador
-nunca devuelve personas, mira la segunda página cuando la primera no llena la lista y no repite un
-título que salga en las dos.
+nunca devuelve personas, pagina de verdad —la página 2 trae cosas que no estaban en la 1— y trae la
+nota de TMDB · el catálogo por filtros pide varias categorías como «cualquiera de ellas» y no como
+«todas a la vez», traduce el nombre de la plataforma al id preguntándoselo a TMDB, y una plataforma
+que TMDB no conoce devuelve vacío en vez del catálogo entero · salirse de un título quita tu parte,
+deja la de quien siga dentro, y sólo borra el título cuando se va el último.
 
-**`test-app.js`** (40): saneadores contra entradas hostiles · varias claves conviviendo · renovar la
+**`test-app.js`** (52): saneadores contra entradas hostiles · varias claves conviviendo · renovar la
 clave de un club sustituye la vieja · una invitación se recoge pero no se guarda · cada club guarda
 su copia local y una copia manipulada se sanea al leerla · salir de un club se lleva su clave y su
 copia y no toca las demás · el perfil del dispositivo se recuerda con acentos y se sanea · el número

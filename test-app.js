@@ -42,6 +42,21 @@ ok('un año no numérico se anula', sucio.year === null);
 ok('un identificador de participante inválido se descarta', Object.keys(sucio.participants).join() === 'u1');
 ok('un estado inventado se descarta', !sucio.participants.u2);
 
+/* las ganas van de 1 a 5 y el Worker recorta igual: si los dos lados no
+   coinciden, la tarjeta pinta cinco corazones y el servidor guarda otra cosa */
+const ganas = A.safeItem({ id: 'i2', title: 'x', type: 'tv', notes: [],
+  participants: { a: { status: 'wish', order: 1, hype: 5 }, b: { status: 'wish', order: 1, hype: 9 },
+    c: { status: 'wish', order: 1, hype: 0 }, d: { status: 'wish', order: 1 } } });
+ok('un 5 de ganas es válido', ganas.participants.a.hype === 5);
+ok('por encima de 5 se recorta', ganas.participants.b.hype === 5);
+ok('por debajo de 1 también', ganas.participants.c.hype === 1);
+ok('y sin decir nada, ganas normales', ganas.participants.d.hype === 3);
+const conNota = (score) => A.safeItem({ id: 'i3', title: 'x', type: 'tv', notes: [], score,
+  participants: { a: { status: 'wish', order: 1 } } });
+ok('la nota de TMDB sobrevive al saneado', conNota(8.4).score === 8.4);
+ok('una nota fuera de rango se recorta', conNota(99).score === 10);
+ok('y un título sin nota no se inventa ninguna', conNota(undefined).score === null);
+
 const vista = A.publicView({ users: [{ id: 'u1', name: 'A', emoji: '🐻', color: '#FF8FD0' }, { id: 'u2', deletedAt: 'x', name: 'B' }],
   items: [{ id: 'i1', title: 'X', participants: { u1: { status: 'wish', order: 1 } }, notes: [{ id: 'n1', by: 'u1', text: 'hola' }, { id: 'n2', deletedAt: 'x', text: 'fuera' }] }] }, 'u1');
 ok('la gente dada de baja no se pinta', vista.users.length === 1);

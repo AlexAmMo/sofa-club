@@ -60,6 +60,15 @@ node test-app.js
   móvil cierra la hoja en vez de salirse de la app. Abrirla a mano descuadra el historial.
 - **Los gestos escriben estilos, no estado.** Un `setS` por `pointermove` reconstruía el documento
   sesenta veces por segundo. Lo que pinta un gesto se pierde al repintar esa zona, y así debe ser.
+- **Hay contratos que están escritos en dos sitios y tienen que decir lo mismo.** El navegador y el
+  Worker validan por separado a propósito, pero si no coinciden, la app pinta una cosa y el servidor
+  guarda otra —o responde 400 y el cambio se deshace solo delante del usuario—. Los que hay hoy:
+  el **rango de ganas** (1–5, por defecto 3: `HYPE_MAX`/`HYPE_POR_DEFECTO` en el Worker, `clampN` en
+  `safeItem`), el **primer episodio al pasar a «viendo»** (`{s:1,e:1}` en los dos), y la **lista de
+  operaciones** — una `op` que el navegador sepa mandar y el Worker no sepa recibir es un 400.
+- **Una página del cliente es una página de TMDB.** El buscador ya no pide una segunda página para
+  rellenar la primera: con paginación de verdad, ese relleno sólo hacía que dos páginas seguidas se
+  solapasen y «ver más» pareciera agotado antes de tiempo.
 - **El estado es de cada club, no de cada persona**, y no debe volverse global: con la regla del
   colapso, mover una tarjeta mueve a todos los que van en ella, así que un estado global dejaría a
   un club moviendo el tablero de otro. Todo lo que cruza clubes (estante, perfil preseleccionado,

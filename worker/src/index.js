@@ -20,7 +20,13 @@
 const GH = 'https://api.github.com';
 const TMDB = 'https://api.themoviedb.org/3';
 const VERSION = 3;
-const TOPE_BUSQUEDA = 14;          // resultados que se devuelven al navegador
+const TOPE_BUSQUEDA = 20;          // resultados que se devuelven al navegador, una página de TMDB
+/* Las ganas van de 1 a 5 y por defecto a 3. Fueron de 1 a 3: los datos viejos
+   siguen valiendo — un 2 de entonces sigue siendo un 2 — pero quien tenga el
+   máximo antiguo verá un 3 de cinco, no un 5. No se migra nada a propósito:
+   inventar entusiasmo que nadie expresó es peor que quedarse corto. */
+const HYPE_MAX = 5;
+const HYPE_POR_DEFECTO = 3;
 
 /* ── utilidades ─────────────────────────────────────────────────────────────── */
 const nowIso = () => new Date().toISOString();
@@ -191,6 +197,7 @@ async function fichaTmdb(env, type, id){
     originalTitle: okStr(d.original_title || d.original_name || d.title || d.name, 160),
     year: Number(String(d.release_date || d.first_air_date || '').slice(0, 4)) || null,
     poster: d.poster_path || null,
+    score: nota(d.vote_average),
     genres: (d.genres || []).slice(0, 8).map((g) => okStr(g.name, 40)),
     overview: okStr(d.overview, 1200),
     runtime: type === 'movie' ? (d.runtime || 0) : ((d.episode_run_time && d.episode_run_time[0]) || 45),
@@ -198,6 +205,108 @@ async function fichaTmdb(env, type, id){
     totalEpisodes: seasons && seasons.length ? seasons.reduce((a, s) => a + s.episodes, 0) : null,
     providers, providersCheckedAt: nowIso(),
   };
+}
+
+/* ── el catálogo: buscar por título y buscar sólo con filtros ───────────────────
+   Los dos devuelven la misma forma, porque el navegador los pinta con la misma
+   fila. Nada de esto entra en el tablero tal cual: al añadir un título se manda
+   sólo su id y la ficha se vuelve a pedir aquí. Es catálogo, no vuestros datos. */
+
+/* la nota de TMDB. Un 0 no es un cero: es que todavía no ha votado nadie */
+const nota = (v) => (typeof v === 'number' && v > 0 ? Math.round(v * 10) / 10 : null);
+
+/* un resultado del catálogo tal como lo espera el navegador. En /search el tipo
+   viene en `media_type`; en /discover lo sabe quien pregunta, porque son dos
+   endpoints distintos. */
+function deCatalogo(r, type){
+  return {
+    tmdbId: r.id, type: type || (r.media_type === 'movie' ? 'movie' : 'tv'),
+    title: okStr(r.title || r.name, 160),
+    originalTitle: okStr(r.original_title || r.original_name || r.title || r.name, 160),
+    year: Number(String(r.release_date || r.first_air_date || '').slice(0, 4)) || null,
+    poster: r.poster_path || null,
+    score: nota(r.vote_average),
+    genreIds: (Array.isArray(r.genre_ids) ? r.genre_ids : []).filter((n) => typeof n === 'number').slice(0, 12),
+  };
+}
+
+/* Los nombres de plataforma se traducen preguntándole a TMDB, no con una tabla
+   escrita a mano: los nombres cambian (HBO España → HBO Max → Max) y una tabla
+   nuestra envejece en silencio, dejando de filtrar sin avisar. La respuesta
+   queda en la caché del borde seis horas, como todo lo demás de TMDB. */
+async function idsDePlataformas(env, type, nombres){
+  if (!nombres.length) return [];
+  const j = await tmdb(env, '/watch/providers/' + type, { watch_region: 'ES' });
+  const porNombre = {};
+  (j.results || []).forEach((p) => { if (p.provider_name) porNombre[p.provider_name.toLowerCase()] = p.provider_id; });
+  return nombres.map((n) => porNombre[n.toLowerCase()]).filter((id) => id != null);
+}
+
+/* «de cuándo»: «old» es todo lo anterior a los 90 y «2020» es de 2020 en
+   adelante; lo demás es el año en que empieza la década. */
+function ventanaDeFechas(dec){
+  if (dec === 'old') return { lte: '1989-12-31' };
+  if (dec === '2020') return { gte: '2020-01-01' };
+  const y = okInt(dec, 1900, 2100);
+  if (y == null) return null;
+  return { gte: y + '-01-01', lte: (y + 9) + '-12-31' };
+}
+
+async function descubrirDe(env, type, f, page){
+  const p = { page: String(page), include_adult: 'false' };
+  /* coma en TMDB es «y»; el navegador manda varias categorías porque quiere
+     cualquiera de ellas, y además duplicadas por tipo (28 es acción en pelis y
+     10759 en series). Con «y» no saldría absolutamente nada. */
+  if (f.genres.length) p.with_genres = f.genres.join('|');
+  if (f.provs.length){
+    const ids = await idsDePlataformas(env, type, f.provs);
+    /* si ninguna plataforma pedida existe en TMDB, filtrar por lista vacía
+       devolvería el catálogo entero: mejor no devolver nada que mentir */
+    if (!ids.length) return [];
+    p.with_watch_providers = ids.join('|');
+    p.watch_region = 'ES';
+  }
+  if (f.rateMin != null){
+    p['vote_average.gte'] = String(f.rateMin);
+    /* sin un mínimo de votos, «mejor nota» lo copan títulos con un único 10 */
+    p['vote_count.gte'] = '50';
+  }
+  if (f.fechas){
+    const campo = type === 'movie' ? 'primary_release_date' : 'first_air_date';
+    if (f.fechas.gte) p[campo + '.gte'] = f.fechas.gte;
+    if (f.fechas.lte) p[campo + '.lte'] = f.fechas.lte;
+  }
+  p.sort_by = f.sort === 'score' ? 'vote_average.desc'
+    : (f.sort === 'new' ? (type === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc')
+    : 'popularity.desc');
+  if (f.sort === 'score' && f.rateMin == null) p['vote_count.gte'] = '200';
+  const j = await tmdb(env, '/discover/' + type, p);
+  return (j.results || []).map((r) => deCatalogo(r, type));
+}
+
+async function descubrir(env, params){
+  const tipo = params.get('type');
+  const tipos = tipo === 'movie' ? ['movie'] : (tipo === 'tv' ? ['tv'] : ['tv', 'movie']);
+  const lista = (s, max) => okStr(s, 400).split(',').map((x) => x.trim()).filter(Boolean).slice(0, max);
+  const rate = Number(params.get('rateMin'));
+  const f = {
+    genres: lista(params.get('genres'), 20).map((g) => okInt(g, 1, 999999)).filter((n) => n != null),
+    provs: lista(params.get('provs'), 12),
+    rateMin: isFinite(rate) && rate > 0 ? Math.max(0, Math.min(10, rate)) : null,
+    fechas: ventanaDeFechas(params.get('dec')),
+    sort: params.get('sort') || 'rel',
+  };
+  const page = okInt(params.get('page'), 1, 500) || 1;
+  const partes = await Promise.all(tipos.map((t) => descubrirDe(env, t, f, page)));
+  /* con los dos tipos se intercalan, para que no salgan primero veinte series y
+     después veinte pelis: el recorte se comería un tipo entero */
+  const out = [];
+  for (let i = 0; out.length < TOPE_BUSQUEDA; i++){
+    const antes = out.length;
+    partes.forEach((lista) => { if (lista[i] && out.length < TOPE_BUSQUEDA) out.push(lista[i]); });
+    if (out.length === antes) break;
+  }
+  return out;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -214,7 +323,7 @@ function siguienteOrden(doc, status){
   return max + 1024;
 }
 function nuevaParte(status, o){
-  return { status, order: o.order, progress: o.progress || null, hype: o.hype != null ? o.hype : 2,
+  return { status, order: o.order, progress: o.progress || null, hype: o.hype != null ? o.hype : HYPE_POR_DEFECTO,
     rating: null, startedAt: status === 'wish' ? null : nowIso(),
     finishedAt: (status === 'done' || status === 'dropped') ? nowIso() : null, updatedAt: nowIso() };
 }
@@ -227,7 +336,7 @@ const OPS = {
     const tmdbId = okInt(a.tmdbId, 1, 99999999);
     const type = a.type === 'movie' ? 'movie' : 'tv';
     const status = STATUSES.indexOf(a.status) >= 0 ? a.status : 'wish';
-    const hype = okInt(a.hype, 1, 3) || 2;
+    const hype = okInt(a.hype, 1, HYPE_MAX) || HYPE_POR_DEFECTO;
     if (!tmdbId) throw new Fallo(400, 'datos');
     let it = (doc.items || []).find((i) => i.tmdbId === tmdbId && !i.deletedAt);
     if (!it){
@@ -243,6 +352,17 @@ const OPS = {
     const it = buscarItem(doc, okId(a.id)); if (!it) throw new Fallo(404, 'sin-item');
     it.deletedAt = nowIso(); it.updatedAt = nowIso();
   },
+  /* salirse de un título no es borrarlo del club: sólo desaparece tu parte. El
+     título se va del todo únicamente si no quedaba nadie más apuntado, que es
+     cuando ya no le importa a nadie. Como todas las de aquí abajo, sólo puede
+     hacerse sobre uno mismo. */
+  async leaveItem(doc, me, a){
+    const it = buscarItem(doc, okId(a.id)); if (!it) throw new Fallo(404, 'sin-item');
+    if (!it.participants[me]) throw new Fallo(400, 'no-estas');
+    delete it.participants[me];
+    it.updatedAt = nowIso();
+    if (!Object.keys(it.participants).length){ it.deletedAt = nowIso(); }
+  },
   /* estado y progreso SÍ son compartidos: es el contrato del colapso. Mover una
      tarjeta colapsada mueve a todo el que esté dentro, y eso es la app. */
   async setStatus(doc, me, a){
@@ -252,7 +372,9 @@ const OPS = {
     delGrupo(doc, a.userIds).forEach((u) => {
       const p = it.participants[u]; if (!p) return;
       p.status = status; p.order = orden;
-      if (status === 'watching' && it.type === 'tv' && !p.progress) p.progress = { s: 1, e: 0 };
+      /* entrar en «viendo» sin haber visto nada te deja en el primer episodio:
+         «T1 E0» era un sitio en el que no ha estado nadie nunca */
+      if (status === 'watching' && it.type === 'tv' && !p.progress) p.progress = { s: 1, e: 1 };
       if (status === 'wish'){ p.progress = null; p.rating = null; p.finishedAt = null; }
       if (status === 'done' || status === 'dropped') p.finishedAt = nowIso();
       if (status === 'watching'){ p.startedAt = p.startedAt || nowIso(); p.finishedAt = null; }
@@ -281,7 +403,7 @@ const OPS = {
   },
   async setHype(doc, me, a){
     const it = buscarItem(doc, okId(a.id)); if (!it) throw new Fallo(404, 'sin-item');
-    const v = okInt(a.value, 1, 3); if (v == null) throw new Fallo(400, 'datos');
+    const v = okInt(a.value, 1, HYPE_MAX); if (v == null) throw new Fallo(400, 'datos');
     const p = it.participants[me]; if (!p) throw new Fallo(400, 'no-estas');
     p.hype = v; sellar(it, me);
   },
@@ -435,26 +557,28 @@ export default {
         await identificar(env, req);
         const q = okStr(url.searchParams.get('q'), 120).trim();
         if (!q) return json({ results: [] }, 200, cab);
-        /* TMDB ordena por popularidad y mezcla personas entre los resultados, así
-           que una temporada concreta de una franquicia grande cae a menudo en la
-           segunda página. Sólo se pide cuando la primera no da para llenar la
-           lista: lo normal es seguir haciendo una sola petición. */
-        const utiles = (j) => (j.results || []).filter((r) => r.media_type === 'tv' || r.media_type === 'movie');
-        const pagina = (n) => tmdb(env, '/search/multi', { query: q, include_adult: 'false', page: String(n) });
-        const j1 = await pagina(1);
-        let crudos = utiles(j1);
-        if (crudos.length < TOPE_BUSQUEDA && (j1.total_pages || 1) > 1){
-          try { crudos = crudos.concat(utiles(await pagina(2))); }
-          catch (e){ /* con una página nos apañamos */ }
-        }
+        /* Una página del cliente es una página de TMDB, sin más. Antes se pedía
+           además la segunda para rellenar la lista, porque el buscador no tenía
+           paginación y una temporada suelta de una franquicia grande se quedaba
+           fuera. Ahora «ver más» pide la página siguiente de verdad, así que ese
+           relleno sólo servía para que dos páginas seguidas se solapasen. */
+        const page = okInt(url.searchParams.get('page'), 1, 500) || 1;
+        const j = await tmdb(env, '/search/multi', { query: q, include_adult: 'false', page: String(page) });
         const vistos = {};
-        const results = crudos
+        /* TMDB mezcla personas entre los resultados: se van antes de recortar, o
+           el recorte se come títulos para dejar sitio a actores. */
+        const results = (j.results || [])
+          .filter((r) => r.media_type === 'tv' || r.media_type === 'movie')
           .filter((r) => !vistos[r.media_type + r.id] && (vistos[r.media_type + r.id] = 1))
           .slice(0, TOPE_BUSQUEDA)
-          .map((r) => ({ tmdbId: r.id, type: r.media_type,
-            title: okStr(r.title || r.name, 160), originalTitle: okStr(r.original_title || r.original_name || r.title || r.name, 160),
-            year: Number(String(r.release_date || r.first_air_date || '').slice(0, 4)) || null,
-            poster: r.poster_path || null }));
+          .map((r) => deCatalogo(r));
+        return json({ results }, 200, cab);
+      }
+
+      /* — el catálogo sin escribir nada: sólo con filtros — */
+      if (ruta === '/api/discover' && req.method === 'GET'){
+        await identificar(env, req);
+        const results = await descubrir(env, url.searchParams);
         return json({ results }, 200, cab);
       }
 

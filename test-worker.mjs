@@ -19,15 +19,21 @@ const b64 = {
 /* ── TMDB de mentira ── */
 const FICHAS = {
   95396: { id: 95396, name: 'Separación', original_name: 'Severance', first_air_date: '2022-02-18',
-    poster_path: '/sev.jpg', genres: [{ name: 'Drama' }], overview: 'Memoria partida en dos.',
+    poster_path: '/sev.jpg', genres: [{ name: 'Drama' }], genre_ids: [18], vote_average: 8.4,
+    overview: 'Memoria partida en dos.',
     episode_run_time: [47], seasons: [{ season_number: 0, episode_count: 3 }, { season_number: 1, episode_count: 9 }, { season_number: 2, episode_count: 10 }],
     'watch/providers': { results: { ES: { flatrate: [{ provider_name: 'Apple TV+', logo_path: '/a.jpg' }] } } } },
   915935: { id: 915935, title: 'Anatomía de una caída', original_title: "Anatomie d'une chute", release_date: '2023-08-23',
-    poster_path: '/ana.jpg', genres: [{ name: 'Drama' }], overview: 'Un juicio que es una autopsia.',
+    poster_path: '/ana.jpg', genres: [{ name: 'Drama' }], genre_ids: [18], vote_average: 7.7,
+    overview: 'Un juicio que es una autopsia.',
     runtime: 151, 'watch/providers': { results: { ES: {} } } },
 };
 
+/* plataformas tal y como las lista TMDB para España */
+const PLATAFORMAS = [{ provider_id: 8, provider_name: 'Netflix' }, { provider_id: 350, provider_name: 'Apple TV+' }];
+
 globalThis.caches = { default: { match: async () => undefined, put: async () => {} } };
+const ultimoDiscover = {};           // con qué parámetros se llamó a /discover
 
 globalThis.fetch = async (url, opts) => {
   const u = new URL(typeof url === 'string' ? url : url.url);
@@ -48,19 +54,37 @@ globalThis.fetch = async (url, opts) => {
     return new Response(JSON.stringify({ content: b64.enc(f.texto), sha: f.sha }), { status: 200 });
   }
   if (u.hostname === 'api.themoviedb.org'){
+    const crudo = (f) => ({ id: f.id, media_type: f.name ? 'tv' : 'movie', name: f.name, title: f.title,
+      original_name: f.original_name, original_title: f.original_title,
+      first_air_date: f.first_air_date, release_date: f.release_date, poster_path: f.poster_path,
+      vote_average: f.vote_average, genre_ids: f.genre_ids });
     if (u.pathname.startsWith('/3/search/multi')){
       const q = (u.searchParams.get('query') || '').toLowerCase();
       const pag = Number(u.searchParams.get('page') || '1');
       const todas = Object.values(FICHAS)
         .filter((f) => ((f.name || f.title) + ' ' + (f.original_name || f.original_title)).toLowerCase().includes(q))
-        .map((f) => ({ id: f.id, media_type: f.name ? 'tv' : 'movie', name: f.name, title: f.title,
-          original_name: f.original_name, original_title: f.original_title,
-          first_air_date: f.first_air_date, release_date: f.release_date, poster_path: f.poster_path }));
+        .map(crudo);
       /* una ficha por página, y una persona colada en la primera: así se ve si
-         el Worker pasa a la segunda página y si filtra a las personas */
+         el Worker pide la página que le han dicho y si filtra a las personas */
       const results = todas.slice(pag - 1, pag);
       if (pag === 1) results.push({ id: 999, media_type: 'person', name: 'Un actor famosísimo' });
       return new Response(JSON.stringify({ results, page: pag, total_pages: todas.length || 1 }), { status: 200 });
+    }
+    if (u.pathname.startsWith('/3/watch/providers/')){
+      return new Response(JSON.stringify({ results: PLATAFORMAS }), { status: 200 });
+    }
+    if (u.pathname.startsWith('/3/discover/')){
+      const tipo = u.pathname.endsWith('/tv') ? 'tv' : 'movie';
+      /* el de mentira sólo obedece a lo que las pruebas comprueban: el tipo, la
+         categoría y la plataforma. Lo demás se devuelve tal cual para poder
+         mirar con qué parámetros se le llamó. */
+      ultimoDiscover[tipo] = Object.fromEntries(u.searchParams);
+      let fs = Object.values(FICHAS).filter((f) => (f.name ? 'tv' : 'movie') === tipo);
+      const gen = u.searchParams.get('with_genres');
+      if (gen){ const ids = gen.split('|').map(Number); fs = fs.filter((f) => (f.genre_ids || []).some((g) => ids.includes(g))); }
+      const prov = u.searchParams.get('with_watch_providers');
+      if (prov === '350') fs = fs.filter((f) => f.id === 95396);
+      return new Response(JSON.stringify({ results: fs.map(crudo) }), { status: 200 });
     }
     const id = Number(u.pathname.split('/').pop());
     const f = FICHAS[id];
@@ -121,6 +145,22 @@ const itemId = add.body.itemId;
 const item0 = add.body.state.items.find((i) => i.id === itemId);
 ok('el título lo pone TMDB, no el cliente', item0.title === 'Separación', item0.title);
 ok('las temporadas también, y sin la de especiales', item0.totalEpisodes === 19, String(item0.totalEpisodes));
+ok('y la nota de TMDB viene con la ficha', item0.score === 8.4, String(item0.score));
+const trasVer = (await op(claveAlex, 'setStatus', { id: itemId, userIds: [idAlex], status: 'watching' }))
+  .body.state.items.find((i) => i.id === itemId);
+ok('pasar a «viendo» te deja en el primer episodio, no en el cero',
+  trasVer.participants[idAlex].progress.s === 1 && trasVer.participants[idAlex].progress.e === 1,
+  JSON.stringify(trasVer.participants[idAlex].progress));
+
+/* las ganas van de 1 a 5 desde que la tarjeta enseña cinco corazones */
+ok('las ganas llegan hasta 5',
+  (await op(claveAlex, 'setHype', { id: itemId, value: 5 })).body.state.items
+    .find((i) => i.id === itemId).participants[idAlex].hype === 5);
+ok('un 6 se queda en 5', (await op(claveAlex, 'setHype', { id: itemId, value: 6 })).body.state.items
+  .find((i) => i.id === itemId).participants[idAlex].hype === 5);
+ok('y un 0 en 1: fuera de rango se recorta, no se guarda a medias',
+  (await op(claveAlex, 'setHype', { id: itemId, value: 0 })).body.state.items
+    .find((i) => i.id === itemId).participants[idAlex].hype === 1);
 
 // Nuria se apunta y puntúa; ¿puede tocar la nota de Alex?
 await op(claveNuria, 'joinUsers', { id: itemId, target: idAlex });
@@ -154,6 +194,18 @@ const movido = await op(claveNuria, 'setStatus', { id: itemId, userIds: [idAlex,
 const it2 = movido.body.state.items.find((i) => i.id === itemId);
 ok('mover una tarjeta compartida sí mueve a los dos (es el diseño)',
   it2.participants[idAlex].status === 'watching' && it2.participants[idNuria].status === 'watching');
+
+/* salirse de un título no es borrarlo del club: sólo desaparece tu parte */
+const compartido = (await op(claveAlex, 'addItem', { tmdbId: 915935, type: 'movie', status: 'wish' })).body.itemId;
+await op(claveNuria, 'joinUsers', { id: compartido, target: idAlex });
+const trasSalir = (await op(claveAlex, 'leaveItem', { id: compartido })).body.state.items.find((i) => i.id === compartido);
+ok('salirse de un título quita tu parte', !!trasSalir && !trasSalir.participants[idAlex]);
+ok('y deja intacta la de quien sigue dentro', !!trasSalir && !!trasSalir.participants[idNuria]);
+ok('salirse dos veces no cuela', (await op(claveAlex, 'leaveItem', { id: compartido })).status === 400);
+ok('cuando se sale el último, el título sí desaparece',
+  !(await op(claveNuria, 'leaveItem', { id: compartido })).body.state.items.some((i) => i.id === compartido));
+ok('y nadie puede sacar a otro: no hay parámetro que lo diga',
+  (await op(claveAmigos, 'leaveItem', { id: itemId })).status === 404);
 
 /* ══ 2. aislamiento entre clubes ══ */
 console.log('\n  — clubes —');
@@ -226,11 +278,52 @@ console.log('\n  — buscador —');
 const busq = await pedir('/api/search?q=a', { metodo: 'GET', clave: claveAlex });
 ok('la búsqueda sólo devuelve series y películas, nunca personas',
   busq.body.results.every((r) => r.type === 'tv' || r.type === 'movie'), JSON.stringify(busq.body.results));
-ok('si la primera página no llena la lista, se mira la segunda',
-  busq.body.results.length === 2 && busq.body.results.some((r) => r.tmdbId === 915935), JSON.stringify(busq.body.results));
-ok('un mismo título no sale dos veces aunque aparezca en las dos páginas',
+ok('la primera página trae lo que TMDB pone en su primera página',
+  busq.body.results.length === 1 && busq.body.results[0].tmdbId === 95396, JSON.stringify(busq.body.results));
+const busq2 = await pedir('/api/search?q=a&page=2', { metodo: 'GET', clave: claveAlex });
+ok('«ver más» pide la página siguiente y trae cosas distintas',
+  busq2.body.results.length === 1 && busq2.body.results[0].tmdbId === 915935, JSON.stringify(busq2.body.results));
+ok('una página no repite lo que ya había en la anterior',
+  !busq2.body.results.some((r) => busq.body.results.some((p) => p.tmdbId === r.tmdbId)));
+ok('un mismo título no sale dos veces dentro de una página',
   new Set(busq.body.results.map((r) => r.type + r.tmdbId)).size === busq.body.results.length);
+ok('los resultados traen la nota de TMDB, que es lo que filtra por valoración',
+  busq.body.results[0].score === 8.4, JSON.stringify(busq.body.results[0]));
+ok('una página que se sale de rango no revienta, devuelve vacío',
+  (await pedir('/api/search?q=a&page=99', { metodo: 'GET', clave: claveAlex })).body.results.length === 0);
 ok('sin clave no se busca', (await pedir('/api/search?q=a', { metodo: 'GET' })).status === 401);
+
+/* ══ 7. el catálogo sólo con filtros ══ */
+console.log('\n  — catálogo por filtros —');
+const desc = await pedir('/api/discover?sort=rel&page=1', { metodo: 'GET', clave: claveAlex });
+ok('sin decir el tipo salen series y películas mezcladas',
+  desc.body.results.length === 2 && new Set(desc.body.results.map((r) => r.type)).size === 2, JSON.stringify(desc.body.results));
+ok('cada resultado sabe si es serie o peli, aunque TMDB no lo diga en /discover',
+  desc.body.results.every((r) => r.type === 'tv' || r.type === 'movie'));
+const soloTv = await pedir('/api/discover?type=tv', { metodo: 'GET', clave: claveAlex });
+ok('pidiendo sólo series, sólo vienen series',
+  soloTv.body.results.length === 1 && soloTv.body.results[0].type === 'tv');
+await pedir('/api/discover?genres=18,10765', { metodo: 'GET', clave: claveAlex });
+ok('varias categorías se piden como «cualquiera de ellas», no como «todas a la vez»',
+  ultimoDiscover.tv.with_genres === '18|10765', ultimoDiscover.tv.with_genres);
+const porPlat = await pedir('/api/discover?provs=Apple%20TV%2B', { metodo: 'GET', clave: claveAlex });
+ok('el nombre de la plataforma se traduce al id que entiende TMDB',
+  ultimoDiscover.tv.with_watch_providers === '350' && ultimoDiscover.tv.watch_region === 'ES', JSON.stringify(ultimoDiscover.tv));
+ok('y filtra de verdad', porPlat.body.results.length === 1 && porPlat.body.results[0].tmdbId === 95396);
+ok('una plataforma que TMDB no conoce no devuelve el catálogo entero',
+  (await pedir('/api/discover?provs=Plataforma%20Inventada', { metodo: 'GET', clave: claveAlex })).body.results.length === 0);
+await pedir('/api/discover?dec=1990', { metodo: 'GET', clave: claveAlex });
+ok('una década se traduce a un intervalo de fechas del campo que toca en cada tipo',
+  ultimoDiscover.tv['first_air_date.gte'] === '1990-01-01' && ultimoDiscover.tv['first_air_date.lte'] === '1999-12-31'
+  && ultimoDiscover.movie['primary_release_date.gte'] === '1990-01-01', JSON.stringify(ultimoDiscover.tv));
+await pedir('/api/discover?dec=old', { metodo: 'GET', clave: claveAlex });
+ok('«antes de los 90» es un tope, no un intervalo',
+  ultimoDiscover.tv['first_air_date.lte'] === '1989-12-31' && !ultimoDiscover.tv['first_air_date.gte']);
+await pedir('/api/discover?sort=score', { metodo: 'GET', clave: claveAlex });
+ok('ordenar por nota exige un mínimo de votos, o lo copan los votados una vez',
+  ultimoDiscover.tv.sort_by === 'vote_average.desc' && Number(ultimoDiscover.tv['vote_count.gte']) >= 200);
+ok('sin clave no se mira el catálogo',
+  (await pedir('/api/discover?type=tv', { metodo: 'GET' })).status === 401);
 
 console.log('\n' + (fallos ? fallos + ' PRUEBA(S) FALLIDA(S)' : 'todas las pruebas del Worker pasan'));
 process.exit(fallos ? 1 : 0);
