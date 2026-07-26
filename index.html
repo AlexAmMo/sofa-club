@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OL68huPguYdXLfrbEKcVzKidIkDMBmtO7BGn9UhPDNo='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HY/7ExPvIbrKkkYxmffy+x9j/Xb1Jd74TBVHAQ85UjU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -832,6 +832,25 @@ function demoPoster(title, hue){
     + "<text x='66' y='98' font-family='Nunito,sans-serif' font-size='30' font-weight='800' fill='hsl(" + hue + " 70% 82%)' text-anchor='middle'>" + ini + "</text></svg>";
   return 'data:image/svg+xml,' + encodeURIComponent(s).replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
+/* Carátulas y logos de verdad, sacados de TMDB por su id. Las imágenes de TMDB
+   son públicas —no llevan credencial— y la CSP ya deja cargar de image.tmdb.org,
+   así que la demo puede verse exactamente como la app de verdad sin tener una
+   sola clave. Antes pintaba un SVG a rayas con iniciales y por eso parecía otra
+   cosa: para juzgar el diseño hay que estar mirando el diseño. */
+const DEMO_POSTERS = {
+  87108:'/hlLXt2tOPT6RRnjiUmoxyG1LTFi.jpg', 94605:'/abf8tHznhSvl9BAElD2cQeRr7do.jpg',
+  94997:'/8MaxftF69sEAAD5673vTjIl8yT3.jpg', 95396:'/wrZjYKxObEaWZmjB7scQMYo40o8.jpg',
+  106379:'/uNctKf62RRL8RKPTrdyFrcttwT2.jpg', 136315:'/5TZnk9ryzfcNlsCOghURfZsBong.jpg',
+  545611:'/9R1zEZJkIah6GuLwFZWsuygn552.jpg', 546554:'/7scJ3fVmwdSpGG87wvxH3kk0RPc.jpg',
+  815266:'/q231osPhSNVwfOr8QHo28sTgbfI.jpg', 915935:'/vGzjaQyv4NPjhgI0hHmKXz3Orjs.jpg',
+  976893:'/efnvsuEdkdwiWR7WyQ2QgcGt8mM.jpg',
+};
+const DEMO_LOGOS = {
+  'Netflix':'/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg', 'HBO Max':'/jbe4gVSfRlbPTdESXhEKpornsfu.jpg',
+  'Movistar Plus+':'/jse4MOi92Jgetym7nbXFZZBI6LK.jpg', 'Filmin':'/kO2SWXvDCHAquaUuTJBuZkTBAuU.jpg',
+  'Amazon Prime Video':'/pvske1MyAoymrs5bguRfVqYiM9a.jpg', 'Disney Plus':'/97yvRBw1GzX7fXprcF80er19ot.jpg',
+  'Apple TV':'/mcbz1LgtErU9p4UdbZ0rG6RTWHX.jpg',
+};
 function demoSeed(){
   const U = ['u_demo1', 'u_demo2', 'u_demo3'];
   const users = [
@@ -847,20 +866,22 @@ function demoSeed(){
     const ss = seasons ? seasons.map((e, i) => ({ number: i + 1, episodes: e })) : null;
     return {
       id: 'itm_d' + (++n), tmdbId, type, title, originalTitle: orig, year, genres, overview, runtime,
-      poster: noPoster ? null : demoPoster(title, (tmdbId * 37) % 360),
+      /* sin carátula real cae al dibujo a rayas, que además hay que seguir viendo:
+         es el hueco de verdad cuando TMDB no tiene imagen */
+      poster: noPoster ? null : (DEMO_POSTERS[tmdbId] || demoPoster(title, (tmdbId * 37) % 360)),
       seasons: ss, totalEpisodes: ss ? ss.reduce((a, s) => a + s.episodes, 0) : null,
-      providers: (provs || []).map((p) => ({ name: p, logo: null })),
+      providers: (provs || []).map((p) => ({ name: p, logo: DEMO_LOGOS[p] || null })),
       providersCheckedAt: nowIso(), addedBy: parts.__by || U[0], addedAt: iso('2026-06-01'),
       participants: (delete parts.__by, parts), notes: notes || [], updatedAt: iso('2026-07-20'), deletedAt: null,
     };
   };
   const items = [
-    mk(95396, 'tv', 'Separación', 'Severance', 2022, ['Drama', 'Ciencia ficción'], 47, [9, 10], ['Apple TV+'],
+    mk(95396, 'tv', 'Separación', 'Severance', 2022, ['Drama', 'Ciencia ficción'], 47, [9, 10], ['Apple TV'],
       'Cuatro empleados de Lumon tienen la memoria dividida entre el trabajo y la vida personal. Cuando aparece un compañero desaparecido, todo empieza a agrietarse.',
       { __by: U[1], [U[0]]: P('watching', 2048, { progress: { s: 2, e: 5 }, hype: 3 }), [U[1]]: P('watching', 2048, { progress: { s: 2, e: 5 }, hype: 3 }), [U[2]]: P('done', 1024, { rating: 5, hype: 3 }) },
       [{ id: 'n1', by: U[2], text: 'no me digáis nada del final de la 1 que os veo', at: iso('2026-07-02') },
        { id: 'n2', by: U[0], text: 'el pasillo. sólo digo eso. el pasillo', at: iso('2026-07-14') }]),
-    mk(136315, 'tv', 'Oso', 'The Bear', 2022, ['Comedia', 'Drama'], 30, [8, 10, 10], ['Disney+'],
+    mk(136315, 'tv', 'Oso', 'The Bear', 2022, ['Comedia', 'Drama'], 30, [8, 10, 10], ['Disney Plus'],
       'Un chef de alta cocina hereda el bar de bocadillos de su hermano en Chicago y arrastra consigo todo lo que no ha llorado todavía.',
       { [U[0]]: P('watching', 3072, { progress: { s: 2, e: 3 } }), [U[1]]: P('watching', 3072, { progress: { s: 1, e: 8 } }), [U[2]]: P('watching', 3072, { progress: { s: 3, e: 1 }, hype: 3 }) },
       [{ id: 'n3', by: U[1], text: 'aviso: el capítulo de la familia da ansiedad de verdad', at: iso('2026-06-28') }]),
@@ -875,7 +896,7 @@ function demoSeed(){
       'Una señora de una lavandería tiene que salvar el multiverso entre dos declaraciones de Hacienda.',
       { __by: U[1], [U[0]]: P('done', 4096, { rating: 5 }), [U[1]]: P('done', 4096, { rating: 5 }), [U[2]]: P('done', 4096, { rating: 2 }) },
       [{ id: 'n7', by: U[2], text: 'a mí me pareció un ruido enorme, lo siento', at: iso('2026-03-02') }]),
-    mk(106379, 'tv', 'Fallout', 'Fallout', 2024, ['Ciencia ficción'], 60, [8], ['Prime Video'],
+    mk(106379, 'tv', 'Fallout', 'Fallout', 2024, ['Ciencia ficción'], 60, [8], ['Amazon Prime Video'],
       'Doscientos años después de las bombas, una chica sale de su refugio y descubre que la superficie tiene mucho sentido del humor.',
       { [U[0]]: P('watching', 9216, { progress: { s: 1, e: 7 } }), [U[1]]: P('watching', 9216, { progress: { s: 1, e: 7 } }) }),
     mk(815266, 'movie', 'Aftersun', 'Aftersun', 2022, ['Drama'], 102, null, ['Filmin', 'Movistar Plus+'],
