@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8MtoT7jz0icxmmedh+HdRbw3fLIqA8W3qwRHG1v5dPs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-d0yWx36vO1GiWAWjNys9twlAdrV3t3qEt7hFvtrEeMM='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3110,12 +3110,12 @@ function settingsHtml(){
           + (gs.length > 1 ? 'estás en ' + gs.length + ' clubes · toca para cambiar' : 'el único de este dispositivo') + '</span></span>'
           + '<span style="flex:none;color:var(--text-dim);font-weight:800;font-size:15px">›</span></button></div>';
       })()
+    /* Aquí vivían «cambiar de perfil» y «salir de este dispositivo». El primero
+       era redundante —el nombre, el bicho y el color se editan ahí arriba— y el
+       segundo daba miedo sin decir de qué: para irte de un club está su propio
+       «salir de este club aquí», en tus clubes. */
     + '<div class="b" style="border-radius:22px;margin-top:10px"><div class="lbl">este dispositivo</div>'
     + instalarHtml()
-    + '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">'
-    + '<button class="pill" data-a="p.welcome">👋 cambiar de perfil</button>'
-    + '<button class="pill" data-a="p.forget">🚪 salir de este dispositivo</button>'
-    + '</div>'
     + '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600;margin-top:12px" class="pretty">'
     + 'club «' + esc(Api.repoName() || 'sofá') + '» · tu clave es tuya y sólo tuya: nadie puede escribir en tu nombre.'
     + '</div></div>'
@@ -3157,7 +3157,11 @@ function clubsHtml(){
           + '<span style="display:block;font-size:11.5px;color:var(--text-dim);font-weight:700;margin-top:2px">' + esc(resumen) + '</span></span>'
           + '<span style="flex:none;font-size:' + (g.activo ? '11.5px' : '15px') + ';font-weight:800;color:' + (g.activo ? c : 'var(--text-dim)') + '">' + (g.activo ? 'aquí estás' : '›') + '</span>'
           + '</button>'
-          + (gs.length > 1 ? '<button data-a="p.leave:' + encodeURIComponent(g.secret) + '" style="align-self:flex-end;min-height:38px;padding:0 2px;font-size:11px;font-weight:800;color:var(--text-dim)">salir de este club aquí</button>' : '')
+          /* Sale siempre, también con un solo club: es la única forma de quitar
+             tu clave de este dispositivo desde que Ajustes ya no lleva «salir
+             de este dispositivo». Escondiéndola con un club te dejaba dentro
+             para siempre. */
+          + '<button data-a="p.leave:' + encodeURIComponent(g.secret) + '" style="align-self:flex-end;min-height:38px;padding:0 2px;font-size:11px;font-weight:800;color:var(--text-dim)">salir de este club aquí</button>'
           + '</div>';
       }).join('')
     + '</div>'
@@ -3871,7 +3875,6 @@ document.addEventListener('click', (e) => {
         else if (w === 'color') setS({ prof:Object.assign({}, p, { color:decodeURIComponent(arg) }) });
         else if (w === 'save') saveProfile(false);
         else if (w === 'finish') saveProfile(true);
-        else if (w === 'welcome') setS({ sheet:{ kind:'welcome' }, pila:[], profRec:false, prof:{ name:'', emoji:'🐻', color:PALETTE[0] } });
         else if (w === 'rmuser') abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'user', userId:arg, name:user(arg).name } }, true);
         else if (w === 'copy') copyInvite();
         else if (w === 'share'){
@@ -3883,7 +3886,6 @@ document.addEventListener('click', (e) => {
           try { navigator.share({ title:'Sofa Club', text:texto, url:S.invite }).catch(() => {}); }
           catch(e){ copyInvite(); }
         }
-        else if (w === 'forget') Api.olvidarDispositivo();
         /* el ofrecimiento del navegador se gasta aquí, dentro del gesto de tocar
            el botón, y sólo vale una vez: si dice que no, desaparece hasta que el
            navegador vuelva a ofrecerlo por su cuenta */
