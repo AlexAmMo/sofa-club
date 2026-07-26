@@ -27,6 +27,11 @@ const TOPE_BUSQUEDA = 20;          // resultados que se devuelven al navegador, 
    inventar entusiasmo que nadie expresó es peor que quedarse corto. */
 const HYPE_MAX = 5;
 const HYPE_POR_DEFECTO = 3;
+/* Un enlace de grupo se manda a un chat y un chat se reenvía. El tope no está
+   para limitar el club —puede tener la gente que quiera— sino para que un
+   enlace que se escape tenga un final: se agota, caduca a los siete días, y el
+   dueño ve cuántos han entrado y puede anularlo de un botón. */
+const TOPE_ENLACE_GRUPO = 20;
 
 /* ── utilidades ─────────────────────────────────────────────────────────────── */
 const nowIso = () => new Date().toISOString();
@@ -135,10 +140,26 @@ async function conGrupo(env, group, fn){
   throw new Fallo(409, 'conflicto');
 }
 
+/* ── invitaciones ───────────────────────────────────────────────────────────
+   Las de antes no traían `maxUsos` ni `usados`: valen como invitación de una
+   persona, que es lo que eran. */
+const invitacionTope = (i) => okInt(i.maxUsos, 1, TOPE_ENLACE_GRUPO) || 1;
+const invitacionUsos = (i) => okInt(i.usados, 0, 9999) || 0;
+const invitacionViva = (i) => !i.usedAt
+  && new Date(i.expiresAt) > new Date()
+  && invitacionUsos(i) < invitacionTope(i);
+
 /* ── vista que se manda al navegador: sin secretos, jamás ───────────────────── */
 function vistaPublica(doc, me){
   return {
     group: doc.group, me: me, owner: doc.owner,
+    /* De las invitaciones sale con qué se cuentan —cuántos han entrado, cuándo
+       caduca— para poder enseñarlo y anularlas. El `codeHash` NO sale nunca, y
+       el código en claro no existe fuera del momento de crearlo. */
+    invites: (doc.invites || []).filter(invitacionViva).map((i) => ({
+      id: i.id || null, by: i.by, createdAt: i.createdAt, expiresAt: i.expiresAt,
+      maxUsos: invitacionTope(i), usados: invitacionUsos(i),
+    })),
     users: (doc.users || []).filter((u) => !u.deletedAt).map((u) => ({
       id: u.id, name: u.name, emoji: u.emoji, color: u.color, joinedAt: u.joinedAt, active: true,
     })),
@@ -448,12 +469,26 @@ const OPS = {
     u.deletedAt = nowIso(); u.secretHash = null;               // su clave deja de valer al instante
     (doc.items || []).forEach((i) => { if (i.participants[id]){ delete i.participants[id]; i.updatedAt = nowIso(); } });
   },
+  /* Dos formas del mismo objeto: la de siempre se gasta con una persona; la de
+     grupo aguanta hasta TOPE_ENLACE_GRUPO, para poder soltarla en un chat y que
+     entre quien quiera sin ir invitando de uno en uno. */
   async createInvite(doc, me, a, env){
     const resto = randomSecret();
-    doc.invites = (doc.invites || []).filter((i) => !i.usedAt && new Date(i.expiresAt) > new Date()).slice(-20);
-    doc.invites.push({ codeHash: await sha256(resto), by: me, createdAt: nowIso(),
-      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(), usedAt: null });
-    return { url: (env.APP_URL || '') + '#i=' + doc.group + '.' + resto };
+    const grupo = a && a.grupo === true;
+    doc.invites = (doc.invites || []).filter(invitacionViva).slice(-20);
+    const inv = { id: uid('inv_'), codeHash: await sha256(resto), by: me, createdAt: nowIso(),
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(), usedAt: null,
+      maxUsos: grupo ? TOPE_ENLACE_GRUPO : 1, usados: 0 };
+    doc.invites.push(inv);
+    return { url: (env.APP_URL || '') + '#i=' + doc.group + '.' + resto, inviteId: inv.id, grupo: grupo };
+  },
+  /* anular un enlace repartido sin tener que echar después a quien entre */
+  async revokeInvite(doc, me, a){
+    const id = okId(a.id);
+    const inv = (doc.invites || []).find((i) => i.id === id && invitacionViva(i));
+    if (!inv) throw new Fallo(404, 'sin-invitacion');
+    inv.usedAt = nowIso();
+    doc.updatedAt = nowIso();
   },
 };
 
@@ -537,9 +572,13 @@ export default {
         const hash = await sha256(partes.resto);
         let secreto = null, meId = null;
         const { doc } = await conGrupo(env, partes.group, async (d) => {
-          const inv = (d.invites || []).find((i) => !i.usedAt && sameHash(i.codeHash, hash) && new Date(i.expiresAt) > new Date());
+          const inv = (d.invites || []).find((i) => sameHash(i.codeHash, hash) && invitacionViva(i));
           if (!inv) throw new Fallo(401, 'invitacion-invalida');
-          inv.usedAt = nowIso();
+          /* se gasta un uso; cuando se agotan, el enlace muere del todo. Dos
+             personas a la vez no se pisan: si otra invocación se adelanta,
+             conGrupo reintenta con el archivo fresco y el contador va bien. */
+          inv.usados = invitacionUsos(inv) + 1;
+          if (inv.usados >= invitacionTope(inv)) inv.usedAt = nowIso();
           const resto = randomSecret();
           const u = { id: uid('u_'), name: okName(body.name), emoji: okEmoji(body.emoji), color: okColor(body.color),
             joinedAt: nowIso(), secretHash: await sha256(resto), deletedAt: null };

@@ -128,9 +128,17 @@ por casualidad — pero sí quien ya fue invitado, que es donde está la puerta 
 
 ### 7. Invitar
 
-Desde **Ajustes → invitar a alguien**. Genera un enlace **de un solo uso y siete días de validez**.
-Quien lo abre elige nombre, bicho y color, y el Worker le crea **su propia clave** — distinta de la
-tuya y de la de todos.
+Desde **Ajustes**, de dos maneras. **Invitar a alguien** genera un enlace de **un solo uso** y siete
+días. **Enlace para un grupo entero** genera uno que aguanta **hasta 20 personas**, para soltarlo en
+un chat y no ir invitando de uno en uno.
+
+En los dos casos, quien lo abre elige nombre, bicho y color, y el Worker le crea **su propia clave**
+— distinta de la tuya y de la de todos.
+
+El de grupo se manda a un chat, y un chat se reenvía. Por eso no es un enlace abierto: tiene un tope,
+caduca a los siete días, y en Ajustes ves **cuántos han entrado y cuántos sitios quedan**, con un
+botón para **anularlo** en el acto. El tope no limita el club —puede tener la gente que quiera— sino
+que le pone final a un enlace que se escape.
 
 ### Varios clubes en el mismo móvil
 
@@ -151,9 +159,15 @@ del tablero. El club sigue igual para los demás; para volver necesitarás otra 
 
 ### Se instala como una app
 
-Al abrirla en el móvil, el navegador ofrece **instalarla**. Queda un icono en la pantalla de inicio y
-se abre **sin barra de direcciones ni barra inferior**: ocupa la pantalla entera y no se distingue de
-una app nativa. En Android sale un aviso solo; en iPhone es *Compartir → Añadir a pantalla de inicio*.
+Al abrirla en el móvil, la propia app te lo ofrece con un aviso al entrar —una vez; si dices «ahora
+no» se calla un mes— y siempre lo tienes en **Ajustes → este dispositivo**. Queda un icono en la
+pantalla de inicio y se abre **sin barra de direcciones ni barra inferior**: ocupa la pantalla entera
+y no se distingue de una app nativa.
+
+El aviso no se lo salta nadie por su cuenta: sólo aparece si ya estás dentro de un club —a quien
+está mirando la demo no se le pide instalar nada— y sólo si el navegador dice que se puede. En
+iPhone, donde Safari no lo ofrece, lo que sale son las instrucciones: *Compartir → Añadir a pantalla
+de inicio*.
 
 Y funciona **sin conexión**: si abres la app sin cobertura, se abre igual con lo último que viera de
 vuestro tablero, y lo que toques se sube al recuperar la red.
@@ -200,7 +214,7 @@ De regalo, el `git log` del repo es el historial de vuestros clubes.
 ## Pruebas
 
 ```bash
-node test-worker.mjs    # 69 · identidad, aislamiento entre clubes, secretos, buscador, catálogo
+node test-worker.mjs    # 85 · identidad, aislamiento entre clubes, secretos, buscador, catálogo, invitaciones
 node test-app.js        # 52 · saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
 ```
 

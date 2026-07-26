@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zOqyLEhHEwVRre0HT18cjBB2YSuyDGVNRwpFb+6/YtY='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8MtoT7jz0icxmmedh+HdRbw3fLIqA8W3qwRHG1v5dPs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -445,6 +445,15 @@ nav button.pri i{font-size:25px}
 .toast button{flex:none;height:38px;padding:0 15px;border-radius:999px;background:var(--wish);
   color:#2A2016;font-weight:800;font-size:13.5px}
 .conf{position:fixed;z-index:80;pointer-events:none}
+/* el aviso de instalar: como el toast pero con sitio para el pulpo y dos
+   botones, y por encima de la barra de navegación en el móvil */
+.instapop{position:fixed;left:14px;right:14px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:121;
+  display:flex;justify-content:center;pointer-events:none}
+@media(max-width:899px){ .instapop{bottom:calc(var(--navh) + 14px + env(safe-area-inset-bottom))} }
+.instapop>div{pointer-events:auto;max-width:520px;width:100%;background:var(--surface-2);border-radius:22px;
+  padding:14px;box-shadow:0 22px 50px -18px #000c;animation:sheetUp .3s var(--spring) backwards}
+.instapop b{display:block;font-size:14.5px;font-weight:800}
+.instapop p{font-size:12.5px;color:var(--text-dim);font-weight:650;margin-top:3px;text-wrap:pretty}
 
 /* ═══════════ HOJAS ═══════════ */
 /* el hueco de arriba respeta la muesca: si no, con la hoja al máximo el tirador
@@ -721,7 +730,7 @@ nav button.pri{flex:1;box-shadow:none}
    API. Catálogo: TMDB. Claves: link mágico → localStorage.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const LS = { cfg:'sc.cfg', theme:'sc.theme', perfil:'sc.me', cache:'sc.cache.' };
+const LS = { cfg:'sc.cfg', theme:'sc.theme', perfil:'sc.me', cache:'sc.cache.', instala:'sc.instalar' };
 const iso = (d) => new Date(d == null ? Date.now() : d).toISOString();
 const uid = (p) => p + Math.random().toString(36).slice(2, 9);
 const nowIso = () => new Date().toISOString();
@@ -893,11 +902,21 @@ function safeItem(i){
 function clampN(v, a, b, dflt){ return (v == null || !isFinite(v)) ? dflt : Math.max(a, Math.min(b, v)); }
 
 /* vista pública: sin lápidas y saneada */
+/* De una invitación sólo llega con qué contarla. El código con el que se entra
+   no sale nunca del Worker, así que aquí no hay nada que esconder — pero sí que
+   sanear, porque acaba pintado. */
+function safeInvite(i){
+  const id = okId(i && i.id); if (!id) return null;
+  return { id: id, by: okId(i.by),
+    createdAt: okStr(i.createdAt, 40) || null, expiresAt: okStr(i.expiresAt, 40) || null,
+    maxUsos: clampN(okNum(i.maxUsos), 1, 999, 1), usados: clampN(okNum(i.usados), 0, 9999, 0) };
+}
 function publicView(raw, me){
   return {
     me: okId(me),
     users: (raw.users || []).filter((u) => !u.deletedAt).map(safeUser).filter(Boolean),
     items: (raw.items || []).filter((i) => !i.deletedAt).map(safeItem).filter(Boolean),
+    invites: (raw.invites || []).map(safeInvite).filter(Boolean),
   };
 }
 /* ── cliente de GitHub: data.json vía Contents API (envía CORS, sin proxy) ── */
@@ -974,6 +993,7 @@ function aplicarLocal(st, op, a, me){
     st.items.forEach((i) => { delete i.participants[a.userId]; });
     st.items = st.items.filter((i) => Object.keys(i.participants).length);
   }
+  else if (op === 'revokeInvite') st.invites = (st.invites || []).filter((i) => i.id !== a.id);
 }
 
 /* lo que llega del Worker se vuelve a sanear aquí: los nombres, las notas y
@@ -1170,12 +1190,16 @@ function createApi(cfg){
       return encolar('updateProfile', { name: p.name, emoji: p.emoji, color: p.color });
     },
     removeUser(userId){ return encolar('removeUser', { userId }); },
-    async createInvite(){
-      if (demo) return location.href;
-      const r = await llamar('/api/op', { method: 'POST', body: JSON.stringify({ op: 'createInvite', args: {} }) });
+    /* No pasa por la cola: el enlace hay que enseñarlo en cuanto existe, y no
+       tiene sentido apuntarlo para «cuando vuelva la conexión». */
+    async createInvite(grupo){
+      if (demo) return { url: location.href, grupo: !!grupo };
+      const r = await llamar('/api/op', { method: 'POST',
+        body: JSON.stringify({ op: 'createInvite', args: { grupo: !!grupo } }) });
       state = sanear(r.state); emit();
-      return r.url;
+      return { url: r.url, grupo: !!r.grupo, id: r.inviteId };
     },
+    revokeInvite(id){ return encolar('revokeInvite', { id }); },
 
     /* estado para la interfaz */
     isDemo: () => demo,
@@ -1505,7 +1529,7 @@ const S = {
   addPage:1, addMore:false, addShown:12, addLoadingMore:false,
   roul:null, statScope:'me', statYear:'all',
   prof:null, profRec:false, invite:null, confirmAsk:null, nuevoClub:'', creando:false,
-  saveState:'idle', inviteState:'idle', copyState:'idle', pop:null, fMore:false, epGrid:false, sopen:{},
+  saveState:'idle', inviteState:'idle', inviteGrupo:false, copyState:'idle', pop:null, instalarPop:false, fMore:false, epGrid:false, sopen:{},
 };
 const setS = (p) => { Object.assign(S, p); render(); };
 
@@ -2131,7 +2155,27 @@ function floatHtml(){
     h += '<div class="toast"><div><span>' + esc(S.toast.text) + '</span>'
       + (S.toast.label ? '<button data-a="toastact">' + esc(S.toast.label) + '</button>' : '') + '</div></div>';
   }
+  /* el aviso de instalar va debajo del toast a propósito: si los dos coinciden,
+     el que responde a algo que acabas de hacer manda */
+  if (S.instalarPop && !S.toast) h += instaPopHtml();
   return h;
+}
+
+function instaPopHtml(){
+  const apple = esApple();
+  return '<div class="instapop"><div>'
+    + '<div style="display:flex;gap:12px;align-items:center">'
+    + '<span style="flex:none">' + mascot(46, 'var(--watching)') + '</span>'
+    + '<span style="flex:1;min-width:0"><b>tenlo como una app</b>'
+    + '<p>' + (apple
+        ? 'toca <b style="display:inline;color:var(--text)">Compartir</b> y luego <b style="display:inline;color:var(--text)">Añadir a pantalla de inicio</b>: se abre a pantalla completa, sin las barras de Safari.'
+        : 'queda un icono en la pantalla de inicio y se abre sin las barras del navegador. Ocupa lo mismo.')
+    + '</p></span></div>'
+    + '<div style="display:flex;gap:8px;margin-top:12px">'
+    + '<button class="cta" style="height:42px;font-size:13px;flex:none;width:auto;padding:0 16px;background:#ffffff14;color:var(--text-dim)" data-a="insta.no">ahora no</button>'
+    + (apple ? '<button class="cta" style="height:42px;font-size:13px;flex:1;background:var(--watching);color:#2A0F1E" data-a="insta.no">entendido</button>'
+             : '<button class="cta" style="height:42px;font-size:13px;flex:1;background:var(--watching);color:#2A0F1E" data-a="insta.si">instalar</button>')
+    + '</div></div></div>';
 }
 /* ── hoja: detalle ── */
 function detailHtml(){
@@ -2886,6 +2930,34 @@ function plegar(k){
 }
 
 /* ── hoja: ajustes ── */
+/* ── enlaces de grupo repartidos ───────────────────────────────────────────
+   Un enlace que se manda a un chat se pierde de vista: deja de saberse cuántos
+   han entrado y si sigue vivo. Esto lo devuelve a la vista, con el botón de
+   anularlo al lado. Los de una sola persona no se listan: se gastan y ya. */
+const puedeCompartir = () => { try { return typeof navigator.share === 'function'; } catch(e){ return false; } };
+const diasQueQuedan = (iso) => Math.max(0, Math.ceil((new Date(iso) - Date.now()) / 86400000));
+
+function enlacesVivosHtml(){
+  const vivos = ((S.data && S.data.invites) || []).filter((i) => i.maxUsos > 1);
+  if (!vivos.length) return '';
+  return '<div style="margin-top:12px;padding-top:12px;box-shadow:inset 0 1px 0 #ffffff14">'
+    + '<div class="lbl-u">enlaces de grupo repartidos</div>'
+    + vivos.map((i) => {
+        const dias = diasQueQuedan(i.expiresAt);
+        return '<div style="display:flex;align-items:center;gap:10px;margin-top:10px">'
+          + '<span style="flex:1;min-width:0">'
+          + '<span style="display:block;font-weight:800;font-size:13.5px">'
+          + (i.usados === 0 ? 'todavía no ha entrado nadie' : i.usados + (i.usados === 1 ? ' persona ha entrado' : ' personas han entrado'))
+          + '</span>'
+          + '<span style="display:block;font-size:11.5px;color:var(--text-dim);font-weight:700;margin-top:2px">'
+          + 'quedan ' + (i.maxUsos - i.usados) + ' sitios · '
+          + (dias === 0 ? 'caduca hoy' : dias === 1 ? 'caduca mañana' : 'caduca en ' + dias + ' días') + '</span></span>'
+          + '<button data-a="p.revoke:' + i.id + '" style="flex:none;min-width:44px;min-height:44px;font-size:12px;font-weight:800;color:var(--bad)">anular</button>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
 /* ── instalar la app ───────────────────────────────────────────────────────
    Chrome hace años que no ofrece instalar por su cuenta: guarda el ofrecimiento
    en un menú que nadie abre. Así que se lo pedimos nosotros. El navegador nos
@@ -2901,6 +2973,33 @@ const yaInstalada = () => {
   catch(e){ return false; }
 };
 const esApple = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+
+/* Se ofrece sólo a quien ya está dentro de un club: a quien está mirando la
+   demo no se le pide que se instale nada. Y sólo si hay forma de hacerlo —el
+   navegador nos ha dicho que la considera instalable, o es un iPhone, donde se
+   hace a mano y lo único que podemos dar son las instrucciones. */
+function tocaOfrecerInstalar(){
+  if (yaInstalada()) return false;
+  if (!Api || (Api.isDemo && Api.isDemo())) return false;
+  if (!promptInstalar && !esApple()) return false;
+  try { if (Date.now() < Number(localStorage.getItem(LS.instala) || 0)) return false; } catch(e){}
+  return true;
+}
+function quizaOfrecerInstalar(retraso){
+  clearTimeout(quizaOfrecerInstalar._t);
+  quizaOfrecerInstalar._t = setTimeout(() => {
+    if (tocaOfrecerInstalar()) setS({ instalarPop:true });
+  }, retraso);
+}
+/* el ofrecimiento del navegador se gasta dentro del gesto y sólo vale una vez */
+function lanzarInstalacion(){
+  const pr = promptInstalar; if (!pr) return;
+  promptInstalar = null; render();
+  Promise.resolve(pr.prompt())
+    .then(() => pr.userChoice)
+    .then((r) => { if (r && r.outcome === 'accepted') toast('instalada 🛋️ búscala en la pantalla de inicio'); })
+    .catch(() => {});
+}
 
 function instalarHtml(){
   if (yaInstalada()){
@@ -2982,10 +3081,21 @@ function settingsHtml(){
         : is === 'ready'
         ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2A2016" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 8a5.4 5.4 0 1 1-1.9-4.1"/><path d="M13.8 2.4v3.4h-3.4"/></svg> generar otro enlace'
         : '<svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#2A2016" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="4" width="13.6" height="10" rx="2.4"/><path d="M2.8 5.4 9 9.8l6.2-4.4"/></svg> invitar a alguien') + '</button>'
+    + '<button class="pill" style="margin-top:9px;width:100%;justify-content:center" data-a="p.invitegrupo">'
+    + '👥 enlace para un grupo entero</button>'
     + (S.invite ? '<div class="fade" style="margin-top:11px;background:#ffffff0d;border-radius:18px;padding:12px">'
-        + '<div style="font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;color:var(--wish)">' + esc(S.invite) + '</div>'
-        + '<button class="cta" style="height:44px;font-size:13px;margin-top:10px;background:' + (cs === 'done' ? 'var(--done)' : '#ffffff14') + ';color:' + (cs === 'done' ? 'var(--ink)' : 'var(--text)') + '" data-a="p.copy">' + (cs === 'done' ? '✓ copiado' : 'copiar enlace') + '</button>'
-        + '<div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-top:10px" class="pretty">quien abra este enlace entra con permiso para editar el tablero entero: mover, puntuar y borrar. Mándalo solo a gente del sofá.</div></div>' : '')
+        + (S.inviteGrupo ? '<div class="lbl-u" style="color:var(--done)">enlace de grupo · vale para varias personas</div>' : '')
+        + '<div style="font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;color:var(--wish);margin-top:' + (S.inviteGrupo ? '8' : '0') + 'px">' + esc(S.invite) + '</div>'
+        + '<div style="display:flex;gap:7px;margin-top:10px">'
+        + (puedeCompartir() ? '<button class="cta" style="height:44px;font-size:13px;flex:1;background:var(--wish);color:#2A2016" data-a="p.share">compartir</button>' : '')
+        + '<button class="cta" style="height:44px;font-size:13px;flex:1;background:' + (cs === 'done' ? 'var(--done)' : '#ffffff14') + ';color:' + (cs === 'done' ? 'var(--ink)' : 'var(--text)') + '" data-a="p.copy">' + (cs === 'done' ? '✓ copiado' : 'copiar') + '</button>'
+        + '</div>'
+        + '<div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-top:10px" class="pretty">'
+        + (S.inviteGrupo
+            ? 'lo puedes soltar en el chat: entra quien quiera, hasta 20 personas, y caduca en 7 días. Cada una elige su nombre y su bicho, y cada una tendrá su propia clave. Si se te va de las manos, lo anulas aquí abajo.'
+            : 'quien abra este enlace entra con permiso para editar el tablero entero: mover, puntuar y borrar. Mándalo solo a gente del sofá.')
+        + '</div></div>' : '')
+    + enlacesVivosHtml()
     + '</div>'
     + (() => {
         const gs = Api.grupos ? Api.grupos() : [];
@@ -3294,7 +3404,7 @@ function openAdd(){
   setTimeout(() => { const el = document.getElementById('addi'); if (el) el.focus(); }, 140); }
 function openSettings(){
   const me = user(meId());
-  const st = { invite:null, saveState:'idle', inviteState:'idle', copyState:'idle',
+  const st = { invite:null, inviteGrupo:false, saveState:'idle', inviteState:'idle', copyState:'idle',
     profRec:false, prof:{ name:me.name === '¿?' ? '' : me.name, emoji:me.emoji, color:me.color } };
   if (S.isMobile) irA('settings', st); else abrirHoja({ kind:'settings' }, st);
 }
@@ -3535,6 +3645,13 @@ document.addEventListener('click', (e) => {
       else if (arg === 'settings') openSettings();
       break;
     case 'toastact': { const t = S.toast; if (t && t.action) t.action(); setS({ toast:null }); break; }
+    case 'insta.si': setS({ instalarPop:false }); lanzarInstalacion(); break;
+    /* «ahora no» es ahora no, no «nunca»: se calla un mes y vuelve a intentarlo,
+       porque la primera vez que abres algo no es cuando decides instalarlo */
+    case 'insta.no':
+      try { localStorage.setItem(LS.instala, String(Date.now() + 30 * 86400000)); } catch(e){}
+      setS({ instalarPop:false });
+      break;
     case 'confirmyes': confirmYes(); break;
     case 'sopen': plegar(arg); break;
     case 'theme': S.theme = arg; try { localStorage.setItem(LS.theme, arg); } catch(err){} render(); break;
@@ -3757,18 +3874,20 @@ document.addEventListener('click', (e) => {
         else if (w === 'welcome') setS({ sheet:{ kind:'welcome' }, pila:[], profRec:false, prof:{ name:'', emoji:'🐻', color:PALETTE[0] } });
         else if (w === 'rmuser') abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'user', userId:arg, name:user(arg).name } }, true);
         else if (w === 'copy') copyInvite();
+        else if (w === 'share'){
+          /* el menú del sistema es lo que abre WhatsApp directamente; si no lo
+             hay, o si lo cierran, no pasa nada: el botón de copiar sigue ahí */
+          const texto = S.inviteGrupo
+            ? 'Os apunto al Sofa Club 🛋️ Entrad con este enlace y elegís nombre y bicho:'
+            : 'Te apunto al Sofa Club 🛋️';
+          try { navigator.share({ title:'Sofa Club', text:texto, url:S.invite }).catch(() => {}); }
+          catch(e){ copyInvite(); }
+        }
         else if (w === 'forget') Api.olvidarDispositivo();
         /* el ofrecimiento del navegador se gasta aquí, dentro del gesto de tocar
            el botón, y sólo vale una vez: si dice que no, desaparece hasta que el
            navegador vuelva a ofrecerlo por su cuenta */
-        else if (w === 'instalar'){
-          const pr = promptInstalar; if (!pr) break;
-          promptInstalar = null; render();
-          Promise.resolve(pr.prompt())
-            .then(() => pr.userChoice)
-            .then((r) => { if (r && r.outcome === 'accepted') toast('instalada 🛋️ búscala en la pantalla de inicio'); })
-            .catch(() => {});
-        }
+        else if (w === 'instalar') lanzarInstalacion();
         else if (w === 'clubs') abrirHoja({ kind:'clubs' }, { nuevoClub:'', creando:false });
         else if (w === 'crear'){
           if (S.creando) break;
@@ -3800,14 +3919,19 @@ document.addEventListener('click', (e) => {
           const s = decodeURIComponent(arg);
           abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'leave', secret:s, group:grupoDe(s) } }, true);
         }
-        else if (w === 'invite'){
+        else if (w === 'invite' || w === 'invitegrupo'){
           if (S.inviteState === 'making') break;
+          const enGrupo = w === 'invitegrupo';
           setS({ inviteState:'making' });
-          call(() => Api.createInvite()).then((url) => {
-            if (!url){ setS({ inviteState:'idle' }); return; }
-            setS({ invite:url, inviteState:'ready', copyState:'idle' });
-            toast('invitación lista 💌 cópiala y mándala');
+          call(() => Api.createInvite(enGrupo)).then((r) => {
+            if (!r){ setS({ inviteState:'idle' }); return; }
+            setS({ invite:r.url, inviteGrupo:enGrupo, inviteState:'ready', copyState:'idle' });
+            toast(enGrupo ? 'enlace de grupo listo 🎉 mándalo al chat' : 'invitación lista 💌 cópiala y mándala');
           });
+        }
+        else if (w === 'revoke'){
+          call(() => Api.revokeInvite(arg), 'enlace anulado');
+          if (S.invite) setS({ invite:null, inviteState:'idle' });
         }
         break;
       }
@@ -4114,6 +4238,10 @@ window.addEventListener('resize', () => {
     setTimeout(() => toast('ya estabas en este club 🛋️ te he dejado como estabas'), 900);
   }
 
+  /* «tenlo como una app», pero no en la cara nada más abrir: primero que se vea
+     el tablero, que es lo que ha venido a ver */
+  quizaOfrecerInstalar(2800);
+
   /* El service worker es lo que le falta al navegador para ofrecer «instalar» y
      que la app se abra sin barras, como una de verdad. Se registra al final y
      sin esperarlo: si falla —contexto no seguro, un navegador que no lo trae—,
@@ -4131,8 +4259,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
   promptInstalar = e;
   /* en el móvil los ajustes son sección y en escritorio hoja: hay que mirar las dos */
   if (S.view === 'settings' || (S.sheet && S.sheet.kind === 'settings')) render();
+  /* el aviso del navegador puede llegar después de que la app haya arrancado,
+     así que la oferta se replantea aquí y no sólo al final del arranque */
+  quizaOfrecerInstalar(1200);
 });
-window.addEventListener('appinstalled', () => { promptInstalar = null; render(); });
+window.addEventListener('appinstalled', () => { promptInstalar = null; setS({ instalarPop:false }); });
 </script>
 </body>
 </html>

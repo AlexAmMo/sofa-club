@@ -21,7 +21,7 @@ Uso principal: **el móvil**, añadido a la pantalla de inicio.
 | | |
 |---|---|
 | Interfaz | completa; el rediseño del 26 de julio está **sin verificar contra el Worker de verdad** |
-| Worker | completo, 69 pruebas contra GitHub y TMDB simulados. **Pendiente de desplegar** |
+| Worker | completo, 85 pruebas contra GitHub y TMDB simulados |
 | Navegador | 52 pruebas de saneado, claves, copias locales, perfil, numeración y hojas |
 | Despliegue | **hecho**: Worker en Cloudflare, app en Pages, dos repos en la cuenta AlexAmMo |
 | E2E real | **hecho** el 25 de julio de 2026 contra GitHub, Cloudflare y TMDB de verdad |
@@ -273,7 +273,7 @@ sofa-club/
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS
 ├── servir.js           servidor local con `no-store`, para probar en el móvil sin esperar a Pages
 ├── test-app.js         52 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
-├── test-worker.mjs     69 pruebas: identidad, clubes, secretos, creación de clubes, buscador, catálogo
+├── test-worker.mjs     85 pruebas: identidad, clubes, secretos, creación de clubes, buscador, catálogo
 ├── worker/
 │   ├── src/index.js    el Worker
 │   ├── wrangler.toml   REPO, BRANCH, APP_URL, APP_ORIGIN
@@ -326,6 +326,11 @@ GET  /api/discover  Bearer <secreto>    ?type=&genres=&provs=&rateMin=&dec=&sort
 POST /api/refresh   Bearer <secreto>                                                 → { state }
 ```
 
+Invitaciones: `createInvite {grupo?}` devuelve `{url, inviteId, grupo}`. Sin `grupo` vale para una
+persona; con `grupo:true` aguanta hasta 20 y siete días. `revokeInvite {id}` la mata en el acto.
+`vistaPublica` saca de cada invitación viva `{id, by, createdAt, expiresAt, maxUsos, usados}` — el
+`codeHash` **no sale nunca**.
+
 Secreto: `<club>.<24 caracteres>`. El club va dentro y determina el archivo que se abre.
 
 ### Datos (`data/<club>.json`, repo privado)
@@ -352,7 +357,7 @@ Secreto: `<club>.<24 caracteres>`. El club va dentro y determina el archivo que 
 tres al usar «seguir yo solo» · el `+1` avanza solo tu ficha y deja al resto donde estaba · la ruleta
 pondera y sortea · la CSP bloquea un script inyectado.
 
-**`test-worker.mjs`** (69): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
+**`test-worker.mjs`** (85): el título lo pone TMDB y no el cliente · colar un `userId` ajeno no cambia
 la nota de nadie · el autor de un comentario lo pone el servidor · no se borra la nota de otro · quien
 no creó el club no echa a nadie · un club no ve los títulos ni la gente de otro · una clave con otro
 club por delante no entra · los secretos no salen en las respuestas ni en disco · expulsar invalida la

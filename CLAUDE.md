@@ -47,7 +47,10 @@ node test-app.js
 - Las operaciones personales del Worker (`setRating`, `setHype`, `addNote`, `updateProfile`,
   `splitOut`) **no reciben identificador de usuario** y no deben recibirlo nunca. El «quién» sale del
   secreto. Añadir ese parámetro reabre la suplantación.
-- `vistaPublica()` es lo que impide que salgan `secretHash` e `invites` en las respuestas.
+- `vistaPublica()` es lo que impide que salga ningún `secretHash` ni ningún `codeHash`. **De las
+  invitaciones sí sale un resumen** —id, cuántos han entrado, cuándo caduca— porque hace falta para
+  enseñar «3 de 20» y para poder anularlas; lo que no sale nunca es el código con el que se entra, que
+  fuera del instante de crearlo no existe en ningún sitio salvo hasheado.
 - Los saneadores del navegador (`okColor`, `okEmoji`, `okImgPath`, `safeItem`) son la última frontera
   antes del DOM: los textos de TMDB los editan terceros. `leerCacheDe()` también sanea, porque la
   copia local es texto de `localStorage` y acaba en el DOM.

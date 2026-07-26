@@ -134,6 +134,46 @@ ok('una invitación da de alta y devuelve una clave propia', alta.status === 200
 ok('esa invitación no vale dos veces',
   (await pedir('/api/join', { cuerpo: { invite: codigo, name: 'Colado' } })).status === 401);
 
+/* ── el enlace de grupo: uno solo, varias personas ──
+   En un club aparte, porque aquí entran veintitantas personas de mentira y no
+   tienen por qué salir luego en las cuentas de los demás. */
+console.log('\n  — enlace para un grupo —');
+const gPanas = await pedir('/admin/group', { admin: 'clave-admin', cuerpo: { group: 'panas', ownerName: 'Alex', ownerEmoji: '🐻' } });
+const clavePanas = gPanas.body.link.split('#s=')[1];
+const grupal = await op(clavePanas, 'createInvite', { grupo: true });
+const codGrupo = grupal.body.url.split('#i=')[1];
+ok('el enlace de grupo se anuncia como tal', grupal.body.grupo === true && !!grupal.body.inviteId);
+const entran = [];
+for (const n of ['Bruno', 'Carmen', 'Dani']){
+  entran.push(await pedir('/api/join', { cuerpo: { invite: codGrupo, name: n, emoji: '🦊', color: '#FFE08A' } }));
+}
+ok('entran varias personas con el mismo enlace', entran.every((r) => r.status === 200));
+ok('y cada una sale con una clave distinta',
+  new Set(entran.map((r) => r.body.secret)).size === 3 && !entran.some((r) => r.body.secret === claveAlex));
+const trasGrupo = (await pedir('/api/session', { clave: clavePanas })).body.state;
+const invG = trasGrupo.invites.find((i) => i.id === grupal.body.inviteId);
+ok('el dueño ve cuántos han entrado', invG && invG.usados === 3 && invG.maxUsos === 20, JSON.stringify(invG));
+ok('y no ve el código con el que se entra', !JSON.stringify(trasGrupo.invites).includes('codeHash'));
+
+/* anularlo es lo que convierte «se me ha escapado el enlace» en un botón */
+ok('se puede anular', (await op(clavePanas, 'revokeInvite', { id: grupal.body.inviteId })).status === 200);
+ok('y deja de valer en el acto',
+  (await pedir('/api/join', { cuerpo: { invite: codGrupo, name: 'Tarde' } })).status === 401);
+ok('anular dos veces no cuela', (await op(clavePanas, 'revokeInvite', { id: grupal.body.inviteId })).status === 404);
+ok('un enlace anulado desaparece de la lista',
+  !((await pedir('/api/session', { clave: clavePanas })).body.state.invites || []).some((i) => i.id === grupal.body.inviteId));
+
+/* el tope existe para que un enlace reenviado tenga final */
+const corto = await op(clavePanas, 'createInvite', { grupo: true });
+const codCorto = corto.body.url.split('#i=')[1];
+let entradas = 0;
+for (let i = 0; i < 21; i++){
+  if ((await pedir('/api/join', { cuerpo: { invite: codCorto, name: 'P' + i, emoji: '🐻', color: '#FFE08A' } })).status === 200) entradas++;
+}
+ok('el enlace de grupo se agota en el tope y no admite uno más', entradas === 20, entradas + ' entradas');
+ok('y el club de al lado no se entera de nada de esto',
+  (await pedir('/api/session', { clave: claveAlex })).body.state.users.length === 2);
+
 const sesion = await pedir('/api/session', { clave: claveNuria });
 const idAlex = sesion.body.state.users.find((u) => u.name === 'Alex').id;
 const idNuria = sesion.body.state.me;
@@ -231,7 +271,9 @@ ok('una clave con otro club por delante tampoco',
 console.log('\n  — secretos —');
 const crudo = JSON.stringify(sesion.body);
 ok('la respuesta no lleva ningún secretHash', !/secretHash/.test(crudo));
-ok('ni las invitaciones', !/invites|codeHash/.test(crudo));
+/* de las invitaciones sí sale con qué contarlas —para poder enseñar «3 de 20
+   han entrado» y anularlas—, pero el código con el que se entra, jamás */
+ok('ni el código de ninguna invitación', !/codeHash/.test(crudo));
 ok('ni la clave de nadie', !crudo.includes(claveAlex.split('.')[1]));
 const enDisco = archivos.get('data/pareja.json').texto;
 ok('en disco se guarda el hash, nunca la clave', /secretHash/.test(enDisco) && !enDisco.includes(claveAlex.split('.')[1]));
