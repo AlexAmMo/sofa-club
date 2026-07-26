@@ -13,5 +13,3 @@ node_modules/
 chk.js
 *.bak
 .playwright-mcp/
-# lo que vas señalando con el inspector: cuaderno de trabajo, no historia
-.marcados.jsonl

@@ -241,7 +241,7 @@ sofa-club/
 ├── .nojekyll           Pages sirve tal cual
 ├── .gitattributes      `* -text`: sin conversión de finales de línea  ← protege el hash de la CSP
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS
-├── configurar.ps1      hace los pasos 6-10 de la puesta en marcha; los secretos los pide wrangler
+├── servir.js           servidor local con `no-store`, para probar en el móvil sin esperar a Pages
 ├── test-app.js         45 pruebas: saneado antes del DOM, claves, copias locales, perfil, episodios, hojas
 ├── test-worker.mjs     44 pruebas: identidad, clubes, secretos, creación de clubes, buscador
 ├── worker/
@@ -249,8 +249,7 @@ sofa-club/
 │   ├── wrangler.toml   REPO, BRANCH, APP_URL, APP_ORIGIN
 │   └── package.json    type: module
 ├── LEEME.md            qué es y cómo funciona
-├── PUESTA-EN-MARCHA.md el paso a paso de cero a un club funcionando, con comprobaciones
-├── CREDENCIALES.md     qué credenciales hacen falta y dónde va cada una
+├── CREDENCIALES.md     qué credenciales hacen falta, con qué alcance y cómo se rotan
 ├── CLAUDE.md           reglas para sesiones de Claude Code (¡la cuenta de GitHub!)
 └── HANDOFF.md          este archivo
 ```
@@ -437,9 +436,9 @@ sin errores de consola, sin scroll horizontal a 390 px y con las zonas pulsables
   de la línea de destino y la `over` del dock se pintan directamente sobre el elemento y desaparecen
   en cuanto se repinta esa zona. Es lo que se quiere, pero si añades un efecto nuevo de gesto,
   recuerda que nadie lo va a reconstruir por ti.
-- `configurar.ps1` va en **UTF-8 con BOM** a propósito: PowerShell 5.1 lee los `.ps1` sin BOM como
-  ANSI y destroza los acentos hasta hacerlo irreparsable, antes incluso de llegar a la primera línea.
-  Si alguna herramienta se lo quita al editarlo, hay que devolvérselo.
+- Si alguna vez vuelve a hacer falta un `.ps1` en este proyecto, va en **UTF-8 con BOM**: PowerShell
+  5.1 lee los `.ps1` sin BOM como ANSI y destroza los acentos hasta hacerlo irreparsable, antes
+  incluso de llegar a la primera línea. Costó un rato averiguarlo.
 
 ---
 

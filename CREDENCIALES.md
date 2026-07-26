@@ -4,9 +4,8 @@
 > cada cosa y con qué alcance exacto. Los valores viven en tu gestor de contraseñas y en
 > `wrangler secret`, que los guarda cifrados en Cloudflare.
 >
-> Esto es la **referencia**: qué es cada credencial, hasta dónde llega y cómo se rota. Para montarlo
-> por primera vez, sigue [`PUESTA-EN-MARCHA.md`](PUESTA-EN-MARCHA.md), que va paso a paso y comprueba
-> cada tramo antes de seguir.
+> Esto es la **referencia**: qué es cada credencial, hasta dónde llega y cómo se rota. La
+> infraestructura ya está montada, así que lo que se usa a diario es la parte de rotación.
 
 ---
 

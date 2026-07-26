@@ -46,8 +46,9 @@ descuido.
 
 ## Puesta en marcha
 
-> **El paso a paso completo, con las comprobaciones de cada tramo, está en
-> [`PUESTA-EN-MARCHA.md`](PUESTA-EN-MARCHA.md).** Lo de aquí abajo es el resumen.
+> **Esto ya está montado y en marcha.** Se queda aquí como referencia de cómo está armado y por si
+> algún día hay que rehacerlo en otra cuenta. El detalle de cada credencial y cómo se rota está en
+> [`CREDENCIALES.md`](CREDENCIALES.md).
 
 ### 1. Una cuenta de GitHub aparte
 

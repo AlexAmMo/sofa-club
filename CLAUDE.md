@@ -26,21 +26,14 @@ node build-csp.js
 La CSP declara el SHA-256 del bloque de script. Si no lo recalculas, el navegador lo bloquea y la
 página no arranca. Es a propósito.
 
-## Para iterar sobre el diseño
+## Para probar en el móvil sin esperar a Pages
 
 ```bash
 node servir.js          # sirve la carpeta con no-store, en la wifi local
 ```
 
-Abre la app con **`?marcar=1`** y aparece un botón «marcar»: al encenderlo, cada
-elemento que toques se apunta en `.marcados.jsonl` con su `data-a`, sus clases,
-su texto, su tamaño real y sus estilos calculados. Es la forma cómoda de señalar
-«este botón» desde el móvil sin describirlo. **Lee ese archivo** cuando te digan
-que han marcado algo.
-
-El inspector vive en `marcar.js` y lo inyecta el servidor al vuelo, añadiendo su
-hash a la CSP en vez de relajarla. En `index.html` no hay nada de esto y a Pages
-no llega nada.
+Manda `no-store` en todo, que es lo que importa: contra Pages el móvil se queda
+diez minutos con la copia vieja y parece que tu cambio no funciona.
 
 ## Antes de dar nada por bueno
 

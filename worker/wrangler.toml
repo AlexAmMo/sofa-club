@@ -16,7 +16,7 @@ APP_URL = "https://alexammo.github.io/sofa-club/"
 # El segundo es el servidor de desarrollo (`node servir.js`) para probar en el
 # móvil sin esperar a que Pages construya. Quítalo cuando dejes de usarlo: es un
 # origen sin cifrar y no tiene por qué seguir invitado eternamente.
-APP_ORIGIN = "https://alexammo.github.io,http://192.168.1.46:8788"
+APP_ORIGIN = "https://alexammo.github.io,http://192.168.1.46:8788,https://tattoo-maiden-ensuring-made.trycloudflare.com"
 
 # Los tres secretos NO van aquí. Se ponen con:
 #   npx wrangler secret put GITHUB_TOKEN
