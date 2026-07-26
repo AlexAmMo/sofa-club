@@ -41,20 +41,55 @@ http.createServer((req, res) => {
   const pedido = decodeURIComponent(req.url.split('?')[0]);
   const consulta = req.url.split('?')[1] || '';
 
-  /* el inspector deja aquí lo que marques con el dedo */
-  if (req.method === 'POST' && pedido === '/_marca'){
+  /* ── el cuaderno de marcas ──────────────────────────────────────────────
+     Lo que señalas con el dedo vive en un JSONL, y se puede quitar de uno en
+     uno: al final lo que quieres es una lista corta con lo que de verdad te
+     interesa, no todo lo que fuiste tocando por el camino.                   */
+  const nuevoId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const leerMarcas = () => {
+    try {
+      return fs.readFileSync(MARCAS, 'utf8').split('\n').filter(Boolean)
+        .map((l) => { try { return JSON.parse(l); } catch (e){ return null; } }).filter(Boolean)
+        /* a las que vengan sin id se les pone uno: si no, borrar una borra todas
+           las que no lo tienen, porque todas casan con «undefined» */
+        .map((m) => (m.id ? m : Object.assign(m, { id: nuevoId() })));
+    } catch (e){ return []; }
+  };
+  const escribirMarcas = (ms) => fs.writeFileSync(MARCAS, ms.map((m) => JSON.stringify(m)).join('\n') + (ms.length ? '\n' : ''));
+  const conCuerpo = (fn) => {
     let cuerpo = '';
     req.on('data', (c) => { cuerpo += c; if (cuerpo.length > 20000) req.destroy(); });
     req.on('end', () => {
-      try {
-        const m = JSON.parse(cuerpo);
-        fs.appendFileSync(MARCAS, JSON.stringify(m) + '\n');
-        console.log('  marcado: ' + m.elemento + (m.accion ? '   [' + m.accion + ']' : '')
-          + '   ' + m.caja.ancho + '×' + m.caja.alto + 'px');
-        res.writeHead(204); res.end();
-      } catch (e){ res.writeHead(400); res.end('mal'); }
+      try { fn(JSON.parse(cuerpo || '{}')); }
+      catch (e){ res.writeHead(400); res.end('mal'); }
     });
-    return;
+  };
+  const responder = (obj) => {
+    res.writeHead(200, { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store' });
+    res.end(JSON.stringify(obj));
+  };
+
+  if (req.method === 'GET' && pedido === '/_marcas') return responder({ marcas: leerMarcas() });
+
+  if (req.method === 'POST' && pedido === '/_marca'){
+    return conCuerpo((m) => {
+      m.id = nuevoId();
+      const ms = leerMarcas(); ms.push(m); escribirMarcas(ms);
+      console.log('  + ' + m.elemento + (m.accion ? '   [' + m.accion + ']' : '')
+        + '   ' + m.caja.ancho + '×' + m.caja.alto + 'px   (' + ms.length + ')');
+      responder({ marca: m });
+    });
+  }
+  if (req.method === 'POST' && pedido === '/_marca/borrar'){
+    return conCuerpo((b) => {
+      const ms = leerMarcas().filter((m) => m.id !== b.id);
+      escribirMarcas(ms);
+      console.log('  − una marca fuera   (' + ms.length + ')');
+      responder({ marcas: ms });
+    });
+  }
+  if (req.method === 'POST' && pedido === '/_marca/vaciar'){
+    return conCuerpo(() => { escribirMarcas([]); console.log('  − cuaderno vacío'); responder({ marcas: [] }); });
   }
 
   const rel = pedido === '/' ? 'index.html' : pedido.replace(/^\/+/, '');
