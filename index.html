@@ -6,7 +6,7 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gMeVGhTzDxtpH8AI/9oBiwiSaI5j8PhyCcgL4MUrc+8='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zOqyLEhHEwVRre0HT18cjBB2YSuyDGVNRwpFb+6/YtY='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2886,6 +2886,41 @@ function plegar(k){
 }
 
 /* ── hoja: ajustes ── */
+/* ── instalar la app ───────────────────────────────────────────────────────
+   Chrome hace años que no ofrece instalar por su cuenta: guarda el ofrecimiento
+   en un menú que nadie abre. Así que se lo pedimos nosotros. El navegador nos
+   avisa con `beforeinstallprompt` de que la considera instalable, y ese aviso se
+   guarda para poder sacarlo cuando la persona toque el botón — hay que gastarlo
+   dentro del gesto, no vale enseñarlo por nuestra cuenta.
+
+   Safari no manda ese aviso y nunca lo hará: en iPhone se instala a mano desde
+   «Compartir», así que lo que toca es contarlo, no esconder el botón.          */
+let promptInstalar = null;
+const yaInstalada = () => {
+  try { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+  catch(e){ return false; }
+};
+const esApple = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+
+function instalarHtml(){
+  if (yaInstalada()){
+    return '<div class="xclub" style="margin-top:11px">🛋️<div>ya la tienes instalada. Por eso no ves las barras del navegador.</div></div>';
+  }
+  if (promptInstalar){
+    return '<button class="pill" style="margin-top:11px;width:100%;justify-content:center;color:var(--done)" data-a="p.instalar">'
+      + '⬇️ instalar como app</button>'
+      + '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600;margin-top:8px" class="pretty">'
+      + 'queda un icono en la pantalla de inicio y se abre sin las barras del navegador.</div>';
+  }
+  if (esApple()){
+    return '<div class="xclub" style="margin-top:11px">📲<div>para tenerla como app: toca <b style="color:var(--text)">Compartir</b> '
+      + 'y luego <b style="color:var(--text)">Añadir a pantalla de inicio</b>. Se abrirá sin las barras de Safari.</div></div>';
+  }
+  return '<div style="font-size:11.5px;color:var(--text-dim);font-weight:600;margin-top:11px" class="pretty">'
+    + 'para tenerla como app, busca <b style="color:var(--text-dim)">instalar</b> o '
+    + '<b style="color:var(--text-dim)">añadir a pantalla de inicio</b> en el menú del navegador.</div>';
+}
+
 function settingsHtml(){
   const p = S.prof || {}, d = S.data, alone = d.users.length <= 1;
   const ss = S.saveState, is = S.inviteState, cs = S.copyState;
@@ -2966,6 +3001,7 @@ function settingsHtml(){
           + '<span style="flex:none;color:var(--text-dim);font-weight:800;font-size:15px">›</span></button></div>';
       })()
     + '<div class="b" style="border-radius:22px;margin-top:10px"><div class="lbl">este dispositivo</div>'
+    + instalarHtml()
     + '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">'
     + '<button class="pill" data-a="p.welcome">👋 cambiar de perfil</button>'
     + '<button class="pill" data-a="p.forget">🚪 salir de este dispositivo</button>'
@@ -3722,6 +3758,17 @@ document.addEventListener('click', (e) => {
         else if (w === 'rmuser') abrirHoja({ kind:'confirm' }, { confirmAsk:{ kind:'user', userId:arg, name:user(arg).name } }, true);
         else if (w === 'copy') copyInvite();
         else if (w === 'forget') Api.olvidarDispositivo();
+        /* el ofrecimiento del navegador se gasta aquí, dentro del gesto de tocar
+           el botón, y sólo vale una vez: si dice que no, desaparece hasta que el
+           navegador vuelva a ofrecerlo por su cuenta */
+        else if (w === 'instalar'){
+          const pr = promptInstalar; if (!pr) break;
+          promptInstalar = null; render();
+          Promise.resolve(pr.prompt())
+            .then(() => pr.userChoice)
+            .then((r) => { if (r && r.outcome === 'accepted') toast('instalada 🛋️ búscala en la pantalla de inicio'); })
+            .catch(() => {});
+        }
         else if (w === 'clubs') abrirHoja({ kind:'clubs' }, { nuevoClub:'', creando:false });
         else if (w === 'crear'){
           if (S.creando) break;
@@ -4076,6 +4123,16 @@ window.addEventListener('resize', () => {
     catch(e){ /* sin instalar, pero viva */ }
   }
 })();
+
+/* Esto se engancha fuera del arranque y cuanto antes: el navegador dispara el
+   aviso una sola vez y no espera a que terminemos de cargar. */
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();               /* si no, algunos navegadores lo sueltan a su aire */
+  promptInstalar = e;
+  /* en el móvil los ajustes son sección y en escritorio hoja: hay que mirar las dos */
+  if (S.view === 'settings' || (S.sheet && S.sheet.kind === 'settings')) render();
+});
+window.addEventListener('appinstalled', () => { promptInstalar = null; render(); });
 </script>
 </body>
 </html>

@@ -6,7 +6,6 @@
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
-  "id": "/sofa-club/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
