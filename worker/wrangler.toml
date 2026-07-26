@@ -13,10 +13,12 @@ APP_URL = "https://alexammo.github.io/sofa-club/"
 # EN MINÚSCULAS, siempre: esto se compara letra a letra contra la cabecera
 # Origin que manda el navegador, y el navegador la manda siempre en minúsculas.
 # Con una mayúscula aquí, CORS bloquea todo y la app abre pero no guarda nada.
-# El segundo es el servidor de desarrollo (`node servir.js`) para probar en el
-# móvil sin esperar a que Pages construya. Quítalo cuando dejes de usarlo: es un
-# origen sin cifrar y no tiene por qué seguir invitado eternamente.
-APP_ORIGIN = "https://alexammo.github.io,http://192.168.1.46:8788,https://tattoo-maiden-ensuring-made.trycloudflare.com"
+#
+# Sólo producción. Para probar en el móvil contra el sistema real hay que añadir
+# aquí el origen de desarrollo — `http://IP-LOCAL:8788` o el del túnel — y volver
+# a desplegar; lo que NO conviene es dejarlo puesto después, sobre todo el de la
+# IP local, que va sin cifrar, ni el de un túnel, que muere y deja basura.
+APP_ORIGIN = "https://alexammo.github.io"
 
 # Los tres secretos NO van aquí. Se ponen con:
 #   npx wrangler secret put GITHUB_TOKEN

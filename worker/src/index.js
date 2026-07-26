@@ -68,7 +68,16 @@ const ID_OK = /^[A-Za-z0-9_-]{1,64}$/;
 const STATUSES = ['wish', 'watching', 'done', 'dropped'];
 const okId = (s) => (ID_OK.test(String(s || '')) ? String(s) : null);
 const okStr = (s, max) => String(s == null ? '' : s).slice(0, max);
-const okInt = (v, a, b) => { const n = Math.round(Number(v)); return isFinite(n) ? Math.max(a, Math.min(b, n)) : null; };
+/* Ausente no es cero. `Number(null)` y `Number('')` valen 0, así que sin este
+   guardia un parámetro que nadie mandó se convertía en un 0 y el recorte lo
+   subía al mínimo del rango: parecía un valor pedido a propósito. Costó una
+   búsqueda de catálogo que sólo devolvía cine mudo — sin década, el filtro de
+   fechas se creía que le habían pedido los 1900. */
+const okInt = (v, a, b) => {
+  if (v == null || v === '') return null;
+  const n = Math.round(Number(v));
+  return isFinite(n) ? Math.max(a, Math.min(b, n)) : null;
+};
 const okColor = (c) => (/^#[0-9a-fA-F]{6}$/.test(String(c || '')) ? String(c) : '#8B85A8');
 const okEmoji = (e) => (String(e == null ? '' : e).replace(/[^\p{Extended_Pictographic}\p{L}\p{N}]/gu, '').slice(0, 4) || '\u{1F464}');
 const okName = (n) => (okStr(n, 40).trim() || 'Alguien');
@@ -245,6 +254,7 @@ async function idsDePlataformas(env, type, nombres){
 /* «de cuándo»: «old» es todo lo anterior a los 90 y «2020» es de 2020 en
    adelante; lo demás es el año en que empieza la década. */
 function ventanaDeFechas(dec){
+  if (!dec) return null;                    /* sin década, sin filtro de fechas */
   if (dec === 'old') return { lte: '1989-12-31' };
   if (dec === '2020') return { gte: '2020-01-01' };
   const y = okInt(dec, 1900, 2100);

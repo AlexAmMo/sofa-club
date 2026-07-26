@@ -161,6 +161,13 @@ ok('un 6 se queda en 5', (await op(claveAlex, 'setHype', { id: itemId, value: 6 
 ok('y un 0 en 1: fuera de rango se recorta, no se guarda a medias',
   (await op(claveAlex, 'setHype', { id: itemId, value: 0 })).body.state.items
     .find((i) => i.id === itemId).participants[idAlex].hype === 1);
+/* «no mando el valor» tiene que ser un error, no un 1 silencioso */
+ok('y no mandar ganas ninguna es un error, no el mínimo',
+  (await op(claveAlex, 'setHype', { id: itemId, value: null })).status === 400);
+ok('lo mismo con un título sin id de TMDB',
+  (await op(claveAlex, 'addItem', { tmdbId: null, type: 'tv', status: 'wish' })).status === 400);
+ok('y con un progreso a medias',
+  (await op(claveAlex, 'setProgress', { id: itemId, userIds: [idAlex], progress: { s: null, e: 3 } })).status === 400);
 
 // Nuria se apunta y puntúa; ¿puede tocar la nota de Alex?
 await op(claveNuria, 'joinUsers', { id: itemId, target: idAlex });
@@ -312,6 +319,14 @@ ok('el nombre de la plataforma se traduce al id que entiende TMDB',
 ok('y filtra de verdad', porPlat.body.results.length === 1 && porPlat.body.results[0].tmdbId === 95396);
 ok('una plataforma que TMDB no conoce no devuelve el catálogo entero',
   (await pedir('/api/discover?provs=Plataforma%20Inventada', { metodo: 'GET', clave: claveAlex })).body.results.length === 0);
+/* sin década no debe colarse ningún filtro de fechas: «no me has dicho nada» no
+   es «dame los años 1900», que es justo lo que pasaba cuando Number(null)=0 */
+await pedir('/api/discover?sort=rel', { metodo: 'GET', clave: claveAlex });
+ok('sin década no se filtra por fechas',
+  !ultimoDiscover.tv['first_air_date.gte'] && !ultimoDiscover.tv['first_air_date.lte']
+  && !ultimoDiscover.movie['primary_release_date.gte'], JSON.stringify(ultimoDiscover.tv));
+ok('ni por nota, ni por plataforma, si nadie las ha pedido',
+  !ultimoDiscover.tv['vote_average.gte'] && !ultimoDiscover.tv.with_watch_providers);
 await pedir('/api/discover?dec=1990', { metodo: 'GET', clave: claveAlex });
 ok('una década se traduce a un intervalo de fechas del campo que toca en cada tipo',
   ultimoDiscover.tv['first_air_date.gte'] === '1990-01-01' && ultimoDiscover.tv['first_air_date.lte'] === '1999-12-31'
