@@ -60,6 +60,14 @@ node test-app.js
   móvil cierra la hoja en vez de salirse de la app. Abrirla a mano descuadra el historial.
 - **Los gestos escriben estilos, no estado.** Un `setS` por `pointermove` reconstruía el documento
   sesenta veces por segundo. Lo que pinta un gesto se pierde al repintar esa zona, y así debe ser.
+- **El service worker va a la red primero, y la caché es sólo el paracaídas de estar sin
+  cobertura.** No lo inviertas «para que cargue rápido»: el JavaScript se ejecuta porque su SHA-256
+  está en la CSP del propio `index.html`, así que servir un `index.html` viejo de la caché es una
+  pantalla en blanco, en el móvil y sin forma de arreglarla desde ahí. Si algún día se cachea de
+  verdad, la caché tiene que llevar la versión en el nombre y vaciarse en cada despliegue.
+- **La app ya no es un solo archivo.** Para poder instalarse necesita `manifest.webmanifest`, `sw.js`
+  y los PNG de `iconos/` — el manifiesto y el service worker no admiten ir en línea, y iOS no acepta
+  un icono SVG. `index.html` sigue siendo la app entera; esos cuatro son el envoltorio.
 - **Hay contratos que están escritos en dos sitios y tienen que decir lo mismo.** El navegador y el
   Worker validan por separado a propósito, pero si no coinciden, la app pinta una cosa y el servidor
   guarda otra —o responde 400 y el cambio se deshace solo delante del usuario—. Los que hay hoy:

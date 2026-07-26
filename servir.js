@@ -17,7 +17,9 @@ const PUERTO = Number(process.argv[2]) || 8788;
 const RAIZ = __dirname;
 const TIPOS = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
   '.json':'application/json; charset=utf-8', '.md':'text/plain; charset=utf-8',
-  '.svg':'image/svg+xml', '.png':'image/png', '.ico':'image/x-icon' };
+  '.svg':'image/svg+xml', '.png':'image/png', '.ico':'image/x-icon',
+  /* sin este, el navegador descarta el manifiesto y no ofrece instalar la app */
+  '.webmanifest':'application/manifest+json; charset=utf-8' };
 
 http.createServer((req, res) => {
   const pedido = decodeURIComponent(req.url.split('?')[0]);

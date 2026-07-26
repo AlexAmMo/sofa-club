@@ -1,0 +1,21 @@
+{
+  "name": "Sofa Club",
+  "short_name": "Sofa Club",
+  "description": "El tablero de series y pelis de vuestro sofá.",
+  "lang": "es-ES",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "/sofa-club/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0B0817",
+  "theme_color": "#0A0910",
+  "categories": ["entertainment", "lifestyle"],
+  "icons": [
+    { "src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -6,12 +6,14 @@
 <title>Sofa Club</title>
 <!-- CSP: sólo se ejecuta el bloque de JavaScript cuyo hash está aquí, y sólo se puede
      hablar con GitHub y TMDB. Si tocas el JS, recalcula: node build-csp.js -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ys0V6J3G9Bd9bFsgx753fDxwdCbtPiXO++Ho8WwuTwU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gMeVGhTzDxtpH8AI/9oBiwiSaI5j8PhyCcgL4MUrc+8='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org; connect-src https://sofa-club.mysofaclub.workers.dev ; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0A0910">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='8' width='44' height='44' rx='22' fill='%23FF4FA3'/%3E%3Ccircle cx='18' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='32' cy='52' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='46' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Cellipse cx='25' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3Cellipse cx='39' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Sofa Club">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230A0910'/%3E%3Crect x='10' y='8' width='44' height='44' rx='22' fill='%23FF4FA3'/%3E%3Ccircle cx='18' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='32' cy='52' r='7.4' fill='%23FF4FA3'/%3E%3Ccircle cx='46' cy='50' r='7.4' fill='%23FF4FA3'/%3E%3Cellipse cx='25' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3Cellipse cx='39' cy='28' rx='3.2' ry='4' fill='%2320182B'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3247,7 +3249,12 @@ function irA(v, extra){
 function openDetail(key){ abrirHoja({ kind:'detail', key:key }, { noteDraft:'', epGrid:false }); }
 function openAdd(){
   const limpio = { addQ:'', addResults:null, addPick:null, addSearching:false, addDone:null };
-  if (S.isMobile) irA('add', limpio); else abrirHoja({ kind:'add' }, limpio);
+  if (S.isMobile){ irA('add', limpio); return; }
+  /* El teclado sólo se levanta solo en escritorio, donde no tapa nada. En el
+     móvil se come media pantalla antes de que hayas decidido si querías buscar
+     por título o rebuscar en el catálogo con los filtros, que es lo que estás
+     mirando al entrar. Se abre cuando tocas la caja, como en todo lo demás. */
+  abrirHoja({ kind:'add' }, limpio);
   setTimeout(() => { const el = document.getElementById('addi'); if (el) el.focus(); }, 140); }
 function openSettings(){
   const me = user(meId());
@@ -4058,6 +4065,15 @@ window.addEventListener('resize', () => {
      tampoco se calla: abrir un enlace y que no pase nada es lo peor que hay */
   if (Api.invitacionSobraba && Api.invitacionSobraba()){
     setTimeout(() => toast('ya estabas en este club 🛋️ te he dejado como estabas'), 900);
+  }
+
+  /* El service worker es lo que le falta al navegador para ofrecer «instalar» y
+     que la app se abra sin barras, como una de verdad. Se registra al final y
+     sin esperarlo: si falla —contexto no seguro, un navegador que no lo trae—,
+     la app funciona exactamente igual, sólo que no se puede instalar. */
+  if ('serviceWorker' in navigator){
+    try { await navigator.serviceWorker.register('sw.js'); }
+    catch(e){ /* sin instalar, pero viva */ }
   }
 })();
 </script>

@@ -265,6 +265,9 @@ con su propio hash y la página no arrancaría, con una pantalla en blanco por t
 ```
 sofa-club/
 ├── index.html          la app entera. Un archivo, sin build
+├── manifest.webmanifest  nombre, iconos y `display:standalone` — lo que la hace instalable
+├── sw.js               service worker: red primero, caché sólo para estar sin cobertura
+├── iconos/             PNG 192 y 512, más el maskable de Android. iOS no acepta SVG aquí
 ├── .nojekyll           Pages sirve tal cual
 ├── .gitattributes      `* -text`: sin conversión de finales de línea  ← protege el hash de la CSP
 ├── build-csp.js        recalcula el hash del script y el connect-src  ← OBLIGATORIO tras tocar JS

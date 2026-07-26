@@ -149,7 +149,23 @@ puede hacer dos cosas que no cuestan ni una petición ni le cuentan nada a nadie
 Desde ahí también puedes **salir de un club en ese dispositivo**: se borran de él tu clave y su copia
 del tablero. El club sigue igual para los demás; para volver necesitarás otra invitación.
 
-Añadid la página a la pantalla de inicio y queda como una app.
+### Se instala como una app
+
+Al abrirla en el móvil, el navegador ofrece **instalarla**. Queda un icono en la pantalla de inicio y
+se abre **sin barra de direcciones ni barra inferior**: ocupa la pantalla entera y no se distingue de
+una app nativa. En Android sale un aviso solo; en iPhone es *Compartir → Añadir a pantalla de inicio*.
+
+Y funciona **sin conexión**: si abres la app sin cobertura, se abre igual con lo último que viera de
+vuestro tablero, y lo que toques se sube al recuperar la red.
+
+> **Por comprobar en iPhone.** iOS ha guardado históricamente los datos de las apps de pantalla de
+> inicio **aparte de los de Safari**. Si eso sigue siendo así, al instalar te encontrarás la app en
+> modo demo aunque en Safari estuvieras dentro de tu club — y en una app instalada no hay barra de
+> direcciones donde pegar el enlace personal para arreglarlo.
+>
+> No está verificado en un iPhone de verdad, así que **pruébalo antes de repartir el enlace**. Si
+> pasa, la solución es un campo dentro de la app para pegar ahí tu enlace cuando no hay clave; es un
+> rato de trabajo, no un rediseño. En Android no ocurre: Chrome y la app instalada comparten almacén.
 
 ---
 
