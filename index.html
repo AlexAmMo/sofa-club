@@ -551,6 +551,18 @@ nav button.pri i{font-size:25px}
    esté recortado, así que el toggle mide y anima sin re-render. */
 .fold{overflow:hidden;transition:max-height .32s cubic-bezier(.4,0,.2,1),opacity .24s ease}
 @media (prefers-reduced-motion:reduce){.fold{transition:none}}
+/* Un pliegue cerrado sigue teniendo dentro sus seis maquetas de tema, y esas
+   maquetas seguían animándose a 60 Hz detrás de un max-height:0. No se ven y no
+   son gratis: animan propiedades registradas con @property, que no se componen
+   nunca — cada fotograma hay que recalcular el estilo del subárbol en el hilo
+   principal. Medido con la CPU al 6x y la página QUIETA: Ajustes iba a 49 fps
+   (20,5 ms por fotograma) contra los 144 del tablero, y pausándolas vuelve a
+   144. Trece milisegundos y medio por fotograma en dibujar algo invisible.
+   Se pausa por CSS, sin tocar el JavaScript: el botón del pliegue ya mantiene
+   aria-expanded y es el hermano anterior inmediato del .fold. */
+[data-a^="sopen:"][aria-expanded="false"]+.fold .escena,
+[data-a^="sopen:"][aria-expanded="false"]+.fold .escena::before,
+[data-a^="sopen:"][aria-expanded="false"]+.fold .escena::after{animation-play-state:paused}
 /* la ruleta va centrada de arriba abajo: es una pantalla de una sola decisión,
    y con todo alineado a la izquierda el botón de sortear quedaba descolgado */
 .rcfg{text-align:center}
