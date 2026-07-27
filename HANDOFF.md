@@ -35,24 +35,48 @@ En producción:
 
 ### Lo que queda pendiente, y no es código
 
-1. **Rotar las credenciales.** Durante la puesta en marcha del 25 de julio los cuatro secretos
-   pasaron por una conversación de chat: los dos tokens de GitHub, el de TMDB y la `ADMIN_KEY`. Se
-   dan por quemados. Revocar los de GitHub en su pantalla, regenerar el de TMDB y cambiar la
-   `ADMIN_KEY` con `wrangler secret put`.
-2. **Crear el club de verdad** con la `ADMIN_KEY` nueva y repartir invitaciones. Ese enlace no se
-   pega en ningún chat: quien lo tiene *es* su dueño.
-3. **Desplegar el Worker antes de que la app llegue a Pages.** La versión del 26 de julio pide cosas
-   que el Worker sólo sabe hacer desde ese mismo día: ganas hasta 5, `leaveItem` y `/api/discover`.
-   Con el Worker viejo, el quinto corazón responde 400 y el cambio se deshace solo delante del
-   usuario. El orden es `cd worker && npx wrangler deploy` **y después** empujar a `main`; al revés
-   hay una ventana con la app rota en producción.
-4. **Quitar los orígenes de desarrollo de `worker/wrangler.toml`.** `APP_ORIGIN` arrastra la IP local
-   y un túnel de Cloudflare que ya está muerto. No abre nada —un origen que no existe no lo usa
-   nadie— pero es ruido en un sitio donde el ruido se confunde con permiso.
-5. **Decidir si vuelve el aviso de demo.** Al iterar el diseño se quitaron la franja amarilla y el
-   «modo demo · nada se guarda» de la cabecera, que ahora dice «3 personas · todo al día». Quien abra
-   la URL pública sin clave ve un tablero que parece vivo y no guarda nada. Se repone condicionando
-   la franja a `Api.isDemo()`.
+1. **Rotar las credenciales.** Los cuatro secretos —los dos tokens de GitHub, el de TMDB y la
+   `ADMIN_KEY`— pasaron por una conversación de chat el 25 y el 26 de julio. Se dan por quemados. El
+   que importa es **el token de GitHub**: quien lo tenga puede leer el repo de datos entero, o sea
+   todo lo que apuntéis. Y ahora ya hay un club de verdad detrás, así que esto dejó de ser teórico.
+   Revocar los de GitHub, regenerar el de TMDB y cambiar la `ADMIN_KEY` con `wrangler secret put`.
+2. **Decidir si vuelve el aviso de demo.** Al iterar el diseño se quitaron la franja amarilla y el
+   «modo demo · nada se guarda» de la cabecera, que ahora dice «N personas · todo al día». Quien abra
+   la URL pública sin clave ve un tablero que parece vivo y no guarda nada — ya despistó al propio
+   dueño una vez. Importa más desde que hay enlaces de grupo: cuando uno caduque, quien lo abra tarde
+   se encontrará exactamente eso. Se repone condicionando la franja a `Api.isDemo()`.
+3. **Comprobar la PWA en un iPhone.** iOS ha guardado históricamente los datos de las apps de
+   pantalla de inicio aparte de los de Safari. Si sigue siendo así, quien instale se encontrará la
+   app en modo demo aunque en Safari estuviera dentro de su club — y dentro de una app instalada no
+   hay barra de direcciones donde pegar el enlace personal para arreglarlo. Sin verificar en un
+   iPhone de verdad. Si pasa, la solución es un campo para pegar el enlace cuando no hay clave.
+
+### Prueba de rendimiento pendiente de correr
+
+El dueño nota **lag al hacer scroll vertical, sobre todo en Ajustes**, en su móvil. En un portátil
+potente **no se reproduce**: con la CPU estrangulada 4× el scroll va a 140+ fps y no se pierde ni un
+fotograma. Lo medido con fiabilidad:
+
+| | |
+|---|---|
+| Construir el HTML en JS al cambiar de sección | 2 ms |
+| Estilo y layout | 1 ms |
+| **Pintado y composición** | **~54 ms — el 96%** |
+
+Así que el cuello de botella es **GPU**, y la GPU no se puede estrangular desde las herramientas de
+desarrollo. De ahí la prueba: se prepararon dos variantes idénticas en contenido y maquetación,
+**A** tal cual y **B** sin `backdrop-filter` ni animaciones de fondo, con los fondos pasados a
+opacos para que se vean igual. Basta con desplazar Ajustes arriba y abajo en cada una, en el móvil
+que lo sufre.
+
+- Si **B va mejor**: la causa es GPU y el arreglo es cambiar los fondos semitransparentes con
+  desenfoque por opacos equivalentes, que es lo que hace B.
+- Si **van igual**: la causa está en el scroll mismo (cabecera pegajosa, contenedor que desplaza,
+  altura de página) y hay que mirar por ahí.
+
+Las variantes se generaban desde `index.html` inyectando un bloque de CSS antes de `</style>`; no
+tocan el JavaScript, así que **no hace falta recalcular el hash de la CSP**. No están en el repo: se
+rehacen en un minuto cuando haya un móvil delante.
 
 Decisión aplazada: **dominio propio**. Se puede acortar la URL sin comprar nada renombrando el repo
 a `alexammo.github.io` (se serviría en la raíz), y eso **no** rompe las claves de nadie porque el
